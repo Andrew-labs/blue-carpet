@@ -25,28 +25,28 @@ export default async (req, context) => {
       });
     }
 
-    // POST — create Hailuo 2.3 prediction
+    // POST — create Runway Gen-4.5 prediction
     const { imageBase64, gender } = await req.json();
 
+    // Runway Gen-4.5 prompt: describe ONLY motion, not the person.
+    // The model uses the first frame image for appearance.
     const prompts = {
       male:
-        "The subject strides confidently forward down a glamorous blue carpet at a luxury gala. " +
-        "Smooth tracking shot at chest level following the subject forward. " +
+        "The subject walks confidently forward down a glamorous blue carpet. " +
         "Brilliant paparazzi camera flashes fire from both sides. " +
         "Velvet rope barriers, elegant cheering crowd, warm golden overhead lighting. " +
-        "Photorealistic, cinematic, 35mm lens, shallow depth of field. [Tracking shot]",
+        "Smooth tracking shot at chest level. Cinematic, photorealistic.",
       female:
-        "The subject walks gracefully forward down a glamorous blue carpet at a luxury gala. " +
-        "Smooth tracking shot at chest level following the subject forward. " +
+        "The subject walks gracefully forward down a glamorous blue carpet. " +
         "Brilliant paparazzi camera flashes fire from both sides. " +
         "Velvet rope barriers, elegant cheering crowd, warm golden overhead lighting. " +
-        "Photorealistic, cinematic, 35mm lens, shallow depth of field. [Tracking shot]",
+        "Smooth tracking shot at chest level. Cinematic, photorealistic.",
     };
 
     const prompt = prompts[gender] || prompts.male;
 
     const predictionRes = await fetch(
-      "https://api.replicate.com/v1/models/minimax/hailuo-2.3/predictions",
+      "https://api.replicate.com/v1/models/runwayml/gen-4.5/predictions",
       {
         method: "POST",
         headers: {
@@ -56,10 +56,9 @@ export default async (req, context) => {
         body: JSON.stringify({
           input: {
             prompt,
-            first_frame_image: `data:image/jpeg;base64,${imageBase64}`,
-            duration: 6,
-            resolution: "768p",
-            prompt_optimizer: false,
+            image: `data:image/jpeg;base64,${imageBase64}`,
+            duration: 5,
+            ratio: "720:1280",  // 9:16 portrait
           },
         }),
       }
