@@ -25,53 +25,26 @@ export default async (req, context) => {
       });
     }
 
-    // POST — upload image then create Kling 3.0 Omni prediction
+    // POST — create Hailuo 2.3 prediction
     const { imageBase64, gender } = await req.json();
 
-    // Upload image to Replicate file storage via multipart form
-    const imageBytes = Buffer.from(imageBase64, "base64");
-    const blob = new Blob([imageBytes], { type: "image/jpeg" });
-    const formData = new FormData();
-    formData.append("content", blob, "photo.jpg");
-
-    const uploadRes = await fetch("https://api.replicate.com/v1/files", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${REPLICATE_TOKEN}` },
-      body: formData,
-    });
-
-    if (!uploadRes.ok) {
-      const err = await uploadRes.text();
-      throw new Error("Image upload failed: " + err);
-    }
-
-    const uploadData = await uploadRes.json();
-    const imageUrl = uploadData.urls?.get || uploadData.url;
-    if (!imageUrl) throw new Error("No image URL returned from upload");
-
-    // Kling 3.0 Omni uses <<<image_1>>> tag in prompt to reference the person
     const prompts = {
       male:
-        "<<<image_1>>> is wearing a sharp black tuxedo with white dress shirt and black bow tie, " +
-        "walking confidently down a glamorous blue carpet at a luxury gala event. " +
+        "The subject strides confidently forward down a glamorous blue carpet at a luxury gala. " +
         "Paparazzi cameras fire brilliant white flashes from both sides. " +
-        "Elegant well-dressed crowd behind velvet ropes cheering. " +
-        "Warm golden overhead lighting. Camera tracks forward at chest level. " +
-        "Photorealistic, cinematic, 35mm lens.",
+        "Elegant crowd cheering behind velvet ropes. Warm golden overhead lighting. " +
+        "Camera tracks forward at chest level. Photorealistic, 35mm lens. [Tracking shot]",
       female:
-        "<<<image_1>>> is wearing a stunning floor-length red gown, " +
-        "walking confidently down a glamorous blue carpet at a luxury gala event. " +
+        "The subject strides confidently forward down a glamorous blue carpet at a luxury gala. " +
         "Paparazzi cameras fire brilliant white flashes from both sides. " +
-        "Elegant well-dressed crowd behind velvet ropes cheering. " +
-        "Warm golden overhead lighting. Camera tracks forward at chest level. " +
-        "Photorealistic, cinematic, 35mm lens.",
+        "Elegant crowd cheering behind velvet ropes. Warm golden overhead lighting. " +
+        "Camera tracks forward at chest level. Photorealistic, 35mm lens. [Tracking shot]",
     };
 
     const prompt = prompts[gender] || prompts.male;
 
-    // Create Kling 3.0 Omni prediction
     const predictionRes = await fetch(
-      "https://api.replicate.com/v1/models/kwaivgi/kling-v3-omni-video/predictions",
+      "https://api.replicate.com/v1/models/minimax/hailuo-2.3/predictions",
       {
         method: "POST",
         headers: {
@@ -81,12 +54,10 @@ export default async (req, context) => {
         body: JSON.stringify({
           input: {
             prompt,
-            reference_images: [imageUrl],
-            mode: "pro",
-            duration: 8,
-            aspect_ratio: "9:16",
-            generate_audio: true,
-            negative_prompt: "cartoon, animation, illustration, blurry, low quality, distorted face",
+            first_frame_image: `data:image/jpeg;base64,${imageBase64}`,
+            duration: 6,
+            resolution: "768p",
+            prompt_optimizer: false,
           },
         }),
       }
