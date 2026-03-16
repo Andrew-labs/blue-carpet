@@ -73,7 +73,7 @@ export default async (req, context) => {
             swap_image: faceImageUrl,
             target_image: targetImage,
             hair_source: "target",
-            user_gender: gender,
+            user_gender: gender === "male" ? "a man" : "a woman",
           },
         }),
       }
