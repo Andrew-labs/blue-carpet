@@ -23,6 +23,7 @@
   .tagline { margin-top: 14px; font-size: 13px; font-weight: 200; letter-spacing: 0.12em; color: var(--text-dim); }
   .card { width: 100%; max-width: 460px; background: var(--surface); border: 1px solid rgba(201,169,110,0.12); border-radius: 2px; overflow: hidden; animation: fadeUp 1s 0.2s ease both; }
 
+
   /* GENDER SELECTOR */
   #gender-section { padding: 24px 24px 20px; border-bottom: 1px solid rgba(201,169,110,0.08); }
   .gender-label { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); opacity: 0.7; margin-bottom: 12px; display: block; }
@@ -32,6 +33,7 @@
   .gender-btn.selected { background: rgba(201,169,110,0.08); border-color: var(--gold); color: var(--gold); }
   .gender-btn .icon { font-size: 20px; }
   .gender-btn .sub { font-size: 9px; letter-spacing: 0.15em; opacity: 0.6; }
+
 
   /* CAMERA */
   #camera-section { position: relative; aspect-ratio: 9/16; background: #050505; overflow: hidden; }
@@ -57,6 +59,7 @@
   @keyframes flashAnim { 0% { opacity: 1; } 100% { opacity: 0; } }
   #gender-tag { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 6; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); background: rgba(0,0,0,0.55); padding: 5px 12px; border-radius: 20px; white-space: nowrap; display: none; }
 
+
   /* CONTROLS */
   .controls { padding: 24px 24px 28px; display: flex; flex-direction: column; gap: 12px; }
   .shimmer-bar { width: 100%; height: 1px; background: linear-gradient(90deg, transparent 0%, var(--gold) 50%, transparent 100%); background-size: 200% 100%; animation: shimmer 1.8s infinite; opacity: 0; transition: opacity 0.3s; }
@@ -70,6 +73,7 @@
   .btn-ghost:hover:not(:disabled) { border-color: rgba(201,169,110,0.4); color: var(--gold); }
   .btn-ghost:disabled { opacity: 0.25; cursor: not-allowed; }
 
+
   /* STATUS */
   #status-area { padding: 0 24px 24px; display: none; }
   #status-area.visible { display: block; }
@@ -79,9 +83,14 @@
   @keyframes dotPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.25; transform: scale(0.5); } }
   .status-text { font-size: 12px; letter-spacing: 0.06em; color: var(--text-dim); flex: 1; }
 
+  /* COST BADGE */
+  .cost-badge { font-size: 9px; letter-spacing: 0.1em; color: var(--gold-dim); opacity: 0.6; text-align: right; }
+
+
   /* ERROR */
   #error-area { display: none; padding: 0 24px 24px; }
   .error-box { padding: 13px 16px; background: rgba(180,60,60,0.07); border: 1px solid rgba(180,60,60,0.18); border-radius: 1px; font-size: 12px; color: #E07070; letter-spacing: 0.04em; line-height: 1.65; }
+
 
   /* RESULT */
   #result-section { display: none; padding: 0 24px 28px; }
@@ -89,6 +98,7 @@
   .result-label { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); margin-bottom: 12px; opacity: 0.7; }
   #result-video { width: 100%; border-radius: 1px; display: block; border: 1px solid rgba(201,169,110,0.12); }
   .btn-download { margin-top: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
+
 
   footer { margin-top: 32px; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); opacity: 0.35; animation: fadeUp 1s 0.4s ease both; }
   @keyframes fadeUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
@@ -105,6 +115,7 @@
   </header>
   <div class="card">
 
+
     <!-- GENDER -->
     <div id="gender-section">
       <span class="gender-label">Select your look</span>
@@ -119,6 +130,7 @@
         </button>
       </div>
     </div>
+
 
     <!-- CAMERA -->
     <div id="camera-section">
@@ -138,12 +150,14 @@
       <div id="flash-overlay"></div>
     </div>
 
+
     <!-- CONTROLS -->
     <div class="controls">
       <div class="shimmer-bar" id="shimmer"></div>
       <button class="btn btn-primary" id="capture-btn" onclick="startCountdown()" disabled>Step onto the carpet</button>
       <button class="btn btn-ghost" id="retake-btn" onclick="retake()" disabled>Retake</button>
     </div>
+
 
     <div id="status-area">
       <div class="status-line">
@@ -158,17 +172,19 @@
       <a class="btn btn-ghost btn-download" id="download-link" href="#" download="blue-carpet.mp4">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
         Save Video
       </a>
     </div>
   </div>
-  <footer>Powered by Google Veo 3.1 · Replicate</footer>
+  <footer>Powered by Seedance · Replicate</footer>
 </div>
 <script>
 let selectedGender = null;
 let stream = null, capturedBase64 = null, countdownInterval = null;
+
 
 const videoEl = document.getElementById('video-el');
 const photoPreview = document.getElementById('photo-preview');
@@ -190,6 +206,7 @@ const resultVideo = document.getElementById('result-video');
 const downloadLink = document.getElementById('download-link');
 const genderTag = document.getElementById('gender-tag');
 
+
 function selectGender(gender) {
   selectedGender = gender;
   document.getElementById('btn-male').classList.toggle('selected', gender === 'male');
@@ -200,6 +217,7 @@ function selectGender(gender) {
   genderTag.style.display = 'block';
   if (stream) captureBtn.disabled = false;
 }
+
 
 async function initCamera() {
   if (!selectedGender) return;
@@ -218,6 +236,7 @@ async function initCamera() {
   }
 }
 
+
 function startCountdown() {
   if (captureBtn.disabled || !selectedGender) return;
   captureBtn.disabled = true; retakeBtn.disabled = true;
@@ -230,11 +249,13 @@ function startCountdown() {
   }, 1000);
 }
 
+
 function showCountdown(n) {
   countdownNum.textContent = n; countdownOverlay.classList.add('visible');
   countdownNum.style.animation = 'none'; countdownNum.offsetHeight;
   countdownNum.style.animation = 'countPulse 1s ease-in-out';
 }
+
 
 function capturePhoto() {
   flashOverlay.classList.remove('flash'); flashOverlay.offsetHeight; flashOverlay.classList.add('flash');
@@ -251,6 +272,7 @@ function capturePhoto() {
   generateVideo();
 }
 
+
 function retake() {
   capturedBase64 = null; photoPreview.src = ''; photoPreview.style.display = 'none';
   videoEl.style.display = 'block'; hideResult(); hideError();
@@ -260,13 +282,13 @@ function retake() {
   statusDot.style.background = 'var(--gold)';
 }
 
+
 async function generateVideo() {
   captureBtn.textContent = 'Generating…'; captureBtn.disabled = true;
   showStatus('Uploading your photo…');
 
   try {
     // Send base64 image + gender to our Netlify function
-    // The function uploads to Replicate, then creates Veo 3.1 prediction with reference_images
     const createRes = await fetch('/api/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -277,19 +299,21 @@ async function generateVideo() {
     if (!createRes.ok || prediction.error) throw new Error(prediction.error || prediction.detail || 'Failed to create prediction');
     if (!prediction.id) throw new Error('No prediction ID returned');
 
-    showStatus('Building your red carpet scene…');
+    showStatus('Rolling out the red carpet…');
 
+    // Rotating status messages for the ~30–60 second wait
     const msgs = [
-      'Building your red carpet scene…',
+      'Rolling out the red carpet…',
       'Placing you in the spotlight…',
       'Paparazzi cameras loading…',
-      'Rolling the red carpet…',
-      'Almost there…'
+      'Adjusting the golden lighting…',
+      'Almost there — your moment awaits…',
+      'Final touches on your entrance…',
     ];
     let i = 0, result = prediction;
 
     while (result.status !== 'succeeded' && result.status !== 'failed' && result.status !== 'canceled') {
-      await sleep(6000);
+      await sleep(5000);
       showStatus(msgs[i++ % msgs.length]);
       const pollRes = await fetch('/api/predict?id=' + result.id);
       result = await pollRes.json();
@@ -310,6 +334,7 @@ async function generateVideo() {
     shimmer.classList.remove('active');
   }
 }
+
 
 function showStatus(msg) {
   statusArea.style.display = 'block'; statusArea.classList.add('visible');
