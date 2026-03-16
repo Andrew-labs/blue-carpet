@@ -28,24 +28,24 @@ export default async (req, context) => {
     // POST — create Seedance prediction
     const { imageBase64, gender } = await req.json();
 
-    // KEY RULE: Never describe the person in the prompt.
-    // The model uses the reference image for appearance.
-    // The prompt ONLY describes motion, camera and scene.
+    // Outfit-focused prompts — describe ONLY motion and scene.
+    // "The subject" anchors the model to the reference image person.
+    // Never describe the person's appearance — let the model use the photo.
     const prompts = {
       male:
-        "The subject walks confidently forward down a blue carpet. " +
-        "He is wearing a sharp black tuxedo. " +
-        "Smooth tracking shot at chest level following the subject. " +
-        "Paparazzi cameras flash brilliantly from both sides. " +
-        "Velvet ropes, cheering crowd, warm golden lighting. " +
-        "Cinematic, photorealistic, 35mm lens, shallow depth of field.",
+        "The subject wearing this exact outfit walks confidently forward down a blue carpet. " +
+        "Full body shot showing the complete outfit from head to toe. " +
+        "Smooth tracking shot following forward. " +
+        "Brilliant paparazzi camera flashes fire from both sides. " +
+        "Velvet rope barriers, cheering crowd, warm golden event lighting. " +
+        "Photorealistic, 35mm lens, cinematic.",
       female:
-        "The subject walks gracefully forward down a blue carpet. " +
-        "She is wearing an elegant red gown. " +
-        "Smooth tracking shot at chest level following the subject. " +
-        "Paparazzi cameras flash brilliantly from both sides. " +
-        "Velvet ropes, cheering crowd, warm golden lighting. " +
-        "Cinematic, photorealistic, 35mm lens, shallow depth of field.",
+        "The subject wearing this exact outfit walks gracefully forward down a blue carpet. " +
+        "Full body shot showing the complete outfit from head to toe. " +
+        "Smooth tracking shot following forward. " +
+        "Brilliant paparazzi camera flashes fire from both sides. " +
+        "Velvet rope barriers, cheering crowd, warm golden event lighting. " +
+        "Photorealistic, 35mm lens, cinematic.",
     };
 
     const prompt = prompts[gender] || prompts.male;
@@ -61,7 +61,7 @@ export default async (req, context) => {
         body: JSON.stringify({
           input: {
             image: `data:image/jpeg;base64,${imageBase64}`,
-            prompt: prompt,
+            prompt,
             duration: 5,
             resolution: "720p",
             aspect_ratio: "9:16",
