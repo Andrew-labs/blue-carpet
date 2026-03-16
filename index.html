@@ -24,21 +24,14 @@
   .card { width: 100%; max-width: 460px; background: var(--surface); border: 1px solid rgba(201,169,110,0.12); border-radius: 2px; overflow: hidden; animation: fadeUp 1s 0.2s ease both; }
 
   /* GENDER SELECTOR */
-  #gender-section { padding: 28px 24px; border-bottom: 1px solid rgba(201,169,110,0.08); }
-  .gender-label { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); opacity: 0.7; margin-bottom: 14px; display: block; }
+  #gender-section { padding: 24px 24px 20px; border-bottom: 1px solid rgba(201,169,110,0.08); }
+  .gender-label { font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--gold); opacity: 0.7; margin-bottom: 12px; display: block; }
   .gender-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .gender-btn {
-    padding: 16px 10px; border: 1px solid rgba(201,169,110,0.15);
-    background: transparent; border-radius: 1px; cursor: pointer;
-    font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 400;
-    letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim);
-    transition: all 0.2s ease; display: flex; flex-direction: column;
-    align-items: center; gap: 8px;
-  }
+  .gender-btn { padding: 14px 10px; border: 1px solid rgba(201,169,110,0.15); background: transparent; border-radius: 1px; cursor: pointer; font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 400; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); transition: all 0.2s ease; display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .gender-btn:hover { border-color: rgba(201,169,110,0.4); color: var(--gold); }
   .gender-btn.selected { background: rgba(201,169,110,0.08); border-color: var(--gold); color: var(--gold); }
-  .gender-btn .icon { font-size: 22px; }
-  .gender-btn .sub { font-size: 9px; letter-spacing: 0.15em; opacity: 0.6; margin-top: 2px; }
+  .gender-btn .icon { font-size: 20px; }
+  .gender-btn .sub { font-size: 9px; letter-spacing: 0.15em; opacity: 0.6; }
 
   /* CAMERA */
   #camera-section { position: relative; aspect-ratio: 9/16; background: #050505; overflow: hidden; }
@@ -52,9 +45,9 @@
   #camera-section:hover .bracket { opacity: 0.8; }
   .cam-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; color: var(--text-dim); cursor: pointer; transition: background 0.2s; }
   .cam-placeholder:hover { background: rgba(201,169,110,0.03); }
+  .cam-placeholder.disabled { pointer-events: none; opacity: 0.35; }
   .cam-placeholder svg { width: 36px; height: 36px; opacity: 0.25; }
   .cam-placeholder p { font-size: 11px; letter-spacing: 0.14em; opacity: 0.4; text-transform: uppercase; }
-  .cam-placeholder.disabled { pointer-events: none; opacity: 0.4; }
   #countdown-overlay { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); z-index: 10; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
   #countdown-overlay.visible { opacity: 1; }
   .countdown-num { font-family: 'Cormorant Garamond', serif; font-size: 128px; font-weight: 300; color: var(--gold); line-height: 1; animation: countPulse 1s ease-in-out; text-shadow: 0 0 80px rgba(201,169,110,0.5); }
@@ -62,10 +55,7 @@
   #flash-overlay { position: absolute; inset: 0; background: white; z-index: 20; opacity: 0; pointer-events: none; }
   #flash-overlay.flash { animation: flashAnim 0.4s ease-out forwards; }
   @keyframes flashAnim { 0% { opacity: 1; } 100% { opacity: 0; } }
-
-  /* gender reminder on camera */
-  #gender-reminder { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 6; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); opacity: 0; transition: opacity 0.3s; background: rgba(0,0,0,0.5); padding: 5px 12px; border-radius: 20px; white-space: nowrap; }
-  #gender-reminder.visible { opacity: 1; }
+  #gender-tag { position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%); z-index: 6; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--gold); background: rgba(0,0,0,0.55); padding: 5px 12px; border-radius: 20px; white-space: nowrap; display: none; }
 
   /* CONTROLS */
   .controls { padding: 24px 24px 28px; display: flex; flex-direction: column; gap: 12px; }
@@ -115,18 +105,16 @@
   </header>
   <div class="card">
 
-    <!-- GENDER SELECTOR -->
+    <!-- GENDER -->
     <div id="gender-section">
       <span class="gender-label">Select your look</span>
       <div class="gender-btns">
         <button class="gender-btn" id="btn-male" onclick="selectGender('male')">
-          <span class="icon">🤵</span>
-          <span>Male</span>
+          <span class="icon">🤵</span><span>Male</span>
           <span class="sub">Black Tuxedo</span>
         </button>
         <button class="gender-btn" id="btn-female" onclick="selectGender('female')">
-          <span class="icon">👗</span>
-          <span>Female</span>
+          <span class="icon">👗</span><span>Female</span>
           <span class="sub">Red Gown</span>
         </button>
       </div>
@@ -145,7 +133,7 @@
       </div>
       <video id="video-el" autoplay playsinline muted></video>
       <img id="photo-preview" alt="Captured photo">
-      <div id="gender-reminder"></div>
+      <div id="gender-tag"></div>
       <div id="countdown-overlay"><span class="countdown-num" id="countdown-num">3</span></div>
       <div id="flash-overlay"></div>
     </div>
@@ -176,25 +164,9 @@
       </a>
     </div>
   </div>
-  <footer>Powered by Hailuo 2.3 Fast · Replicate</footer>
+  <footer>Powered by Google Veo 3.1 · Replicate</footer>
 </div>
 <script>
-// Gender-specific prompts
-const PROMPTS = {
-  male:
-    'The subject strides forward confidently down a glamorous blue carpet, shoulders back, head high. ' +
-    'Camera tracks smoothly forward at chest level. ' +
-    'Paparazzi cameras fire in rapid bursts from both sides — brilliant white flashes illuminate the subject\'s face. ' +
-    'Elegant crowd cheering behind velvet ropes. Warm golden overhead lighting. ' +
-    'Shot on Arri Alexa, photorealistic, 35mm lens, natural motion. [Tracking shot]',
-  female:
-    'The subject strides forward confidently down a glamorous blue carpet, shoulders back, head high, elegant posture. ' +
-    'Camera tracks smoothly forward at chest level. ' +
-    'Paparazzi cameras fire in rapid bursts from both sides — brilliant white flashes illuminate the subject\'s face. ' +
-    'Elegant crowd cheering behind velvet ropes. Warm golden overhead lighting. ' +
-    'Shot on Arri Alexa, photorealistic, 35mm lens, natural motion. [Tracking shot]'
-};
-
 let selectedGender = null;
 let stream = null, capturedBase64 = null, countdownInterval = null;
 
@@ -216,19 +188,16 @@ const errorText = document.getElementById('error-text');
 const resultSection = document.getElementById('result-section');
 const resultVideo = document.getElementById('result-video');
 const downloadLink = document.getElementById('download-link');
-const genderReminder = document.getElementById('gender-reminder');
+const genderTag = document.getElementById('gender-tag');
 
 function selectGender(gender) {
   selectedGender = gender;
   document.getElementById('btn-male').classList.toggle('selected', gender === 'male');
   document.getElementById('btn-female').classList.toggle('selected', gender === 'female');
-  // Enable camera
   placeholder.classList.remove('disabled');
   placeholderText.textContent = 'Tap to activate camera';
-  // Show reminder on camera
-  genderReminder.textContent = gender === 'male' ? '🤵 Black Tuxedo' : '👗 Red Gown';
-  genderReminder.classList.add('visible');
-  // If camera already on, enable capture
+  genderTag.textContent = gender === 'male' ? '🤵 Black Tuxedo' : '👗 Red Gown';
+  genderTag.style.display = 'block';
   if (stream) captureBtn.disabled = false;
 }
 
@@ -240,9 +209,10 @@ async function initCamera() {
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 1280 } },
       audio: false
     });
-    videoEl.srcObject = stream; videoEl.style.display = 'block';
+    videoEl.srcObject = stream;
+    videoEl.style.display = 'block';
     placeholder.style.display = 'none';
-    if (selectedGender) captureBtn.disabled = false;
+    captureBtn.disabled = false;
   } catch (err) {
     placeholder.innerHTML = '<p style="color:#E07070;font-size:12px;padding:24px;text-align:center;line-height:1.7;opacity:1">Camera access denied.<br>Please refresh and allow camera access.</p>';
   }
@@ -272,7 +242,8 @@ function capturePhoto() {
   const canvas = document.createElement('canvas');
   canvas.width = vw; canvas.height = vh;
   const ctx = canvas.getContext('2d');
-  ctx.save(); ctx.translate(vw, 0); ctx.scale(-1, 1); ctx.drawImage(videoEl, 0, 0, vw, vh); ctx.restore();
+  ctx.save(); ctx.translate(vw, 0); ctx.scale(-1, 1);
+  ctx.drawImage(videoEl, 0, 0, vw, vh); ctx.restore();
   const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
   capturedBase64 = dataUrl.split(',')[1];
   photoPreview.src = dataUrl; photoPreview.style.display = 'block';
@@ -291,37 +262,42 @@ function retake() {
 
 async function generateVideo() {
   captureBtn.textContent = 'Generating…'; captureBtn.disabled = true;
-  showStatus('Sending your photo…');
-  const prompt = PROMPTS[selectedGender];
+  showStatus('Uploading your photo…');
+
   try {
+    // Send base64 image + gender to our Netlify function
+    // The function uploads to Replicate, then creates Veo 3.1 prediction with reference_images
     const createRes = await fetch('/api/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        input: {
-          prompt: prompt,
-          first_frame_image: 'data:image/jpeg;base64,' + capturedBase64,
-          duration: 6,
-          resolution: '768p',
-          prompt_optimizer: false
-        }
-      })
+      body: JSON.stringify({ imageBase64: capturedBase64, gender: selectedGender })
     });
+
     const prediction = await createRes.json();
     if (!createRes.ok || prediction.error) throw new Error(prediction.error || prediction.detail || 'Failed to create prediction');
     if (!prediction.id) throw new Error('No prediction ID returned');
-    showStatus('Lighting the carpet…');
-    const msgs = ['Dressing the scene…', 'Lighting the carpet…', 'Rolling the camera…', 'Almost there…'];
+
+    showStatus('Building your red carpet scene…');
+
+    const msgs = [
+      'Building your red carpet scene…',
+      'Placing you in the spotlight…',
+      'Paparazzi cameras loading…',
+      'Rolling the red carpet…',
+      'Almost there…'
+    ];
     let i = 0, result = prediction;
+
     while (result.status !== 'succeeded' && result.status !== 'failed' && result.status !== 'canceled') {
-      await sleep(5000);
+      await sleep(6000);
       showStatus(msgs[i++ % msgs.length]);
       const pollRes = await fetch('/api/predict?id=' + result.id);
       result = await pollRes.json();
     }
+
     if (result.status === 'succeeded') {
       const url = Array.isArray(result.output) ? result.output[0] : result.output;
-      if (!url) throw new Error('No video URL in response.');
+      if (!url) throw new Error('No video URL returned.');
       setStatusDone('Your moment is ready');
       showResult(url);
     } else {
