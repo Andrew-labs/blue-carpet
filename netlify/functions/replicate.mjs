@@ -25,45 +25,44 @@ export default async (req, context) => {
       });
     }
 
-    // POST /api/predict — two step process:
-    // Step 1: upload base64 image to Replicate to get a URL
-    // Step 2: create Veo 3.1 prediction using reference_images
+    // POST — create Veo 3.1 prediction
     const { imageBase64, gender } = await req.json();
 
-    // Upload image to Replicate file storage
-    const imageBuffer = Buffer.from(imageBase64, "base64");
+    // Convert base64 to Blob and upload via multipart form
+    const imageBytes = Buffer.from(imageBase64, "base64");
+    const blob = new Blob([imageBytes], { type: "image/jpeg" });
+    const formData = new FormData();
+    formData.append("content", blob, "photo.jpg");
+
     const uploadRes = await fetch("https://api.replicate.com/v1/files", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${REPLICATE_TOKEN}`,
-        "Content-Type": "image/jpeg",
-        "Content-Length": imageBuffer.length,
       },
-      body: imageBuffer,
+      body: formData,
     });
 
     if (!uploadRes.ok) {
-      const err = await uploadRes.json().catch(() => ({}));
-      throw new Error("Image upload failed: " + (err.detail || uploadRes.status));
+      const err = await uploadRes.text();
+      throw new Error("Image upload failed: " + err);
     }
 
     const uploadData = await uploadRes.json();
     const imageUrl = uploadData.urls?.get || uploadData.url;
-
     if (!imageUrl) throw new Error("No image URL returned from upload");
 
-    // Gender-specific prompts using Veo 3.1 reference_images approach
+    // Gender-specific prompts
     const prompts = {
       male:
-        "Single shot. A well-dressed man in a sharp black tuxedo strides confidently down a glamorous blue carpet at a luxury gala. " +
-        "Paparazzi cameras fire brilliant white flashes from both sides. Elegant crowd behind velvet ropes. " +
-        "Warm golden overhead lighting. Tracking shot at chest level following the subject forward. " +
-        "Photorealistic, 35mm lens, natural motion, cinematic.",
+        "Single shot. A well-dressed man in a sharp black tuxedo and bow tie strides confidently down a glamorous blue carpet at a luxury gala. " +
+        "The man's face matches the reference image exactly. Paparazzi cameras fire brilliant white flashes from both sides. " +
+        "Elegant crowd cheering behind velvet ropes. Warm golden overhead lighting. " +
+        "Tracking shot at chest level following the subject forward. Photorealistic, 35mm lens, cinematic.",
       female:
-        "Single shot. An elegant woman in a stunning red floor-length gown strides confidently down a glamorous blue carpet at a luxury gala. " +
-        "Paparazzi cameras fire brilliant white flashes from both sides. Elegant crowd behind velvet ropes. " +
-        "Warm golden overhead lighting. Tracking shot at chest level following the subject forward. " +
-        "Photorealistic, 35mm lens, natural motion, cinematic.",
+        "Single shot. An elegant woman in a stunning floor-length red gown strides confidently down a glamorous blue carpet at a luxury gala. " +
+        "The woman's face matches the reference image exactly. Paparazzi cameras fire brilliant white flashes from both sides. " +
+        "Elegant crowd cheering behind velvet ropes. Warm golden overhead lighting. " +
+        "Tracking shot at chest level following the subject forward. Photorealistic, 35mm lens, cinematic.",
     };
 
     const prompt = prompts[gender] || prompts.male;
