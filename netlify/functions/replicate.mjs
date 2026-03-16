@@ -30,7 +30,7 @@ export default async (req, context) => {
     // POST — create prediction
     const body = await req.json();
     const response = await fetch(
-      "https://api.replicate.com/v1/models/minimax/hailuo-2.3-fast/predictions",
+      "https://api.replicate.com/v1/models/minimax/hailuo-2.3/predictions",
       {
         method: "POST",
         headers: {
