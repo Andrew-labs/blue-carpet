@@ -152,10 +152,8 @@ async function initCamera() {
   placeholder.style.pointerEvents = 'none';
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } }, audio: false });
-    videoEl.srcObject = stream;
-    videoEl.style.display = 'block';
-    placeholder.style.display = 'none';
-    captureBtn.disabled = false;
+    videoEl.srcObject = stream; videoEl.style.display = 'block';
+    placeholder.style.display = 'none'; captureBtn.disabled = false;
   } catch (err) {
     placeholder.innerHTML = '<p style="color:#E07070;font-size:12px;padding:24px;text-align:center;line-height:1.7;opacity:1">Camera access denied.<br>Please refresh and allow camera access.</p>';
   }
@@ -174,8 +172,7 @@ function startCountdown() {
 }
 
 function showCountdown(n) {
-  countdownNum.textContent = n;
-  countdownOverlay.classList.add('visible');
+  countdownNum.textContent = n; countdownOverlay.classList.add('visible');
   countdownNum.style.animation = 'none'; countdownNum.offsetHeight;
   countdownNum.style.animation = 'countPulse 1s ease-in-out';
 }
@@ -207,7 +204,7 @@ async function generateVideo() {
   captureBtn.textContent = 'Generating…'; captureBtn.disabled = true;
   showStatus('Sending your photo…');
   try {
-    // Step 1: Create prediction via our secure Netlify function
+    // Step 1: Create prediction via Netlify function (keeps API key secure)
     const createRes = await fetch('/api/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -223,23 +220,19 @@ async function generateVideo() {
     });
 
     const prediction = await createRes.json();
-
-    if (!createRes.ok || prediction.error) {
-      throw new Error(prediction.error || prediction.detail || 'Failed to create prediction (status ' + createRes.status + ')');
-    }
-
-    if (!prediction.id) throw new Error('No prediction ID returned from API.');
+    if (!createRes.ok || prediction.error) throw new Error(prediction.error || prediction.detail || 'Failed to create prediction');
+    if (!prediction.id) throw new Error('No prediction ID returned');
 
     showStatus('Lighting the carpet…');
 
-    // Step 2: Poll Replicate directly using prediction ID (no token needed for GET)
+    // Step 2: Poll via same Netlify function using GET /api/predict?id=xxx
     const msgs = ['Dressing the scene…', 'Lighting the carpet…', 'Rolling the camera…', 'Almost there…'];
     let i = 0, result = prediction;
 
     while (result.status !== 'succeeded' && result.status !== 'failed' && result.status !== 'canceled') {
       await sleep(5000);
       showStatus(msgs[i++ % msgs.length]);
-      const pollRes = await fetch('https://api.replicate.com/v1/predictions/' + result.id);
+      const pollRes = await fetch('/api/predict?id=' + result.id);
       result = await pollRes.json();
     }
 
