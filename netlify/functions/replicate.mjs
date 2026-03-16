@@ -25,10 +25,10 @@ export default async (req, context) => {
       });
     }
 
-    // POST — create Veo 3.1 prediction
+    // POST — upload image then create Kling 3.0 Omni prediction
     const { imageBase64, gender } = await req.json();
 
-    // Convert base64 to Blob and upload via multipart form
+    // Upload image to Replicate file storage via multipart form
     const imageBytes = Buffer.from(imageBase64, "base64");
     const blob = new Blob([imageBytes], { type: "image/jpeg" });
     const formData = new FormData();
@@ -36,9 +36,7 @@ export default async (req, context) => {
 
     const uploadRes = await fetch("https://api.replicate.com/v1/files", {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${REPLICATE_TOKEN}`,
-      },
+      headers: { Authorization: `Bearer ${REPLICATE_TOKEN}` },
       body: formData,
     });
 
@@ -51,25 +49,29 @@ export default async (req, context) => {
     const imageUrl = uploadData.urls?.get || uploadData.url;
     if (!imageUrl) throw new Error("No image URL returned from upload");
 
-    // Gender-specific prompts
+    // Kling 3.0 Omni uses <<<image_1>>> tag in prompt to reference the person
     const prompts = {
       male:
-        "Single shot. A well-dressed man in a sharp black tuxedo and bow tie strides confidently down a glamorous blue carpet at a luxury gala. " +
-        "The man's face matches the reference image exactly. Paparazzi cameras fire brilliant white flashes from both sides. " +
-        "Elegant crowd cheering behind velvet ropes. Warm golden overhead lighting. " +
-        "Tracking shot at chest level following the subject forward. Photorealistic, 35mm lens, cinematic.",
+        "<<<image_1>>> is wearing a sharp black tuxedo with white dress shirt and black bow tie, " +
+        "walking confidently down a glamorous blue carpet at a luxury gala event. " +
+        "Paparazzi cameras fire brilliant white flashes from both sides. " +
+        "Elegant well-dressed crowd behind velvet ropes cheering. " +
+        "Warm golden overhead lighting. Camera tracks forward at chest level. " +
+        "Photorealistic, cinematic, 35mm lens.",
       female:
-        "Single shot. An elegant woman in a stunning floor-length red gown strides confidently down a glamorous blue carpet at a luxury gala. " +
-        "The woman's face matches the reference image exactly. Paparazzi cameras fire brilliant white flashes from both sides. " +
-        "Elegant crowd cheering behind velvet ropes. Warm golden overhead lighting. " +
-        "Tracking shot at chest level following the subject forward. Photorealistic, 35mm lens, cinematic.",
+        "<<<image_1>>> is wearing a stunning floor-length red gown, " +
+        "walking confidently down a glamorous blue carpet at a luxury gala event. " +
+        "Paparazzi cameras fire brilliant white flashes from both sides. " +
+        "Elegant well-dressed crowd behind velvet ropes cheering. " +
+        "Warm golden overhead lighting. Camera tracks forward at chest level. " +
+        "Photorealistic, cinematic, 35mm lens.",
     };
 
     const prompt = prompts[gender] || prompts.male;
 
-    // Create Veo 3.1 prediction with reference_images
+    // Create Kling 3.0 Omni prediction
     const predictionRes = await fetch(
-      "https://api.replicate.com/v1/models/google/veo-3.1/predictions",
+      "https://api.replicate.com/v1/models/kwaivgi/kling-v3-omni-video/predictions",
       {
         method: "POST",
         headers: {
@@ -80,10 +82,11 @@ export default async (req, context) => {
           input: {
             prompt,
             reference_images: [imageUrl],
+            mode: "pro",
             duration: 8,
-            resolution: "720p",
-            generate_audio: true,
             aspect_ratio: "9:16",
+            generate_audio: true,
+            negative_prompt: "cartoon, animation, illustration, blurry, low quality, distorted face",
           },
         }),
       }
