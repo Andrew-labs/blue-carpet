@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blue Carpet — AI Video Experience</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Outfit:wght@200;300;400&display=swap');
+
+  :root {
+    --gold: #C9A96E;
+    --gold-light: #E8D5A3;
+    --gold-dim: #8B6E3A;
+    --deep: #080808;
+    --surface: #0E0E0E;
+    --surface2: #161616;
+    --text: #F0EAE0;
+    --text-dim: #8A8070;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--deep);
+    color: var(--text);
+    font-family: 'Outfit', sans-serif;
+    font-weight: 300;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .ambient {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 80%, rgba(201,169,110,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 60% at 80% 20%, rgba(201,169,110,0.04) 0%, transparent 60%);
+  }
+  .film-grain {
+    position: fixed; inset: 0; pointer-events: none; z-index: 1; opacity: 0.03;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+    background-size: 256px 256px;
+  }
+
+  #app {
+    position: relative; z-index: 2;
+    min-height: 100vh;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 20px;
+  }
+
+  header { text-align: center; margin-bottom: 48px; animation: fadeUp 1s ease both; }
+  .eyebrow {
+    font-size: 10px; font-weight: 400; letter-spacing: 0.4em;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 14px; opacity: 0.8;
+  }
+  h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(42px, 8vw, 72px);
+    font-weight: 300; letter-spacing: 0.05em; line-height: 1;
+  }
+  h1 em { font-style: italic; color: var(--gold); }
+  .tagline {
+    margin-top: 14px; font-size: 13px; font-weight: 200;
+    letter-spacing: 0.12em; color: var(--text-dim);
+  }
+
+  .card {
+    width: 100%; max-width: 460px;
+    background: var(--surface);
+    border: 1px solid rgba(201,169,110,0.12);
+    border-radius: 2px; overflow: hidden;
+    animation: fadeUp 1s 0.2s ease both;
+  }
+
+  /* CAMERA */
+  #camera-section {
+    position: relative; aspect-ratio: 3/4;
+    background: #050505; overflow: hidden;
+  }
+  #video-el {
+    width: 100%; height: 100%; object-fit: cover;
+    transform: scaleX(-1); display: none;
+  }
+  #photo-preview {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%; object-fit: cover;
+    display: none; z-index: 3;
+  }
+
+  .bracket {
+    position: absolute; width: 24px; height: 24px;
+    border-color: var(--gold); border-style: solid; opacity: 0.4; z-index: 5;
+    transition: opacity 0.4s;
+  }
+  .bracket.tl { top: 14px; left: 14px; border-width: 1px 0 0 1px; }
+  .bracket.tr { top: 14px; right: 14px; border-width: 1px 1px 0 0; }
+  .bracket.bl { bottom: 14px; left: 14px; border-width: 0 0 1px 1px; }
+  .bracket.br { bottom: 14px; right: 14px; border-width: 0 1px 1px 0; }
+  #camera-section:hover .bracket { opacity: 0.8; }
+
+  .cam-placeholder {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 12px;
+    color: var(--text-dim); cursor: pointer; transition: background 0.2s;
+  }
+  .cam-placeholder:hover { background: rgba(201,169,110,0.03); }
+  .cam-placeholder svg { width: 36px; height: 36px; opacity: 0.25; }
+  .cam-placeholder p { font-size: 11px; letter-spacing: 0.14em; opacity: 0.4; text-transform: uppercase; }
+
+  #countdown-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.45); z-index: 10;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+  }
+  #countdown-overlay.visible { opacity: 1; }
+  .countdown-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 128px; font-weight: 300; color: var(--gold); line-height: 1;
+    animation: countPulse 1s ease-in-out;
+    text-shadow: 0 0 80px rgba(201,169,110,0.5);
+  }
+  @keyframes countPulse {
+    0%   { transform: scale(1.5); opacity: 0; }
+    25%  { transform: scale(1);   opacity: 1; }
+    85%  { transform: scale(0.95); opacity: 1; }
+    100% { transform: scale(0.9);  opacity: 0; }
+  }
+
+  #flash-overlay {
+    position: absolute; inset: 0; background: white;
+    z-index: 20; opacity: 0; pointer-events: none;
+  }
+  #flash-overlay.flash { animation: flashAnim 0.4s ease-out forwards; }
+  @keyframes flashAnim { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+  /* CONTROLS */
+  .controls { padding: 24px 24px 28px; display: flex; flex-direction: column; gap: 12px; }
+
+  .shimmer-bar {
+    width: 100%; height: 1px;
+    background: linear-gradient(90deg, transparent 0%, var(--gold) 50%, transparent 100%);
+    background-size: 200% 100%; animation: shimmer 1.8s infinite;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .shimmer-bar.active { opacity: 1; }
+  @keyframes shimmer { 0% { background-position: -100% 0; } 100% { background-position: 200% 0; } }
+
+  .btn {
+    width: 100%; padding: 15px; border: none; border-radius: 1px;
+    font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 400;
+    letter-spacing: 0.25em; text-transform: uppercase; cursor: pointer; transition: all 0.2s ease;
+  }
+  .btn-primary { background: var(--gold); color: #080808; }
+  .btn-primary:hover:not(:disabled) { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-primary:disabled { background: var(--gold-dim); cursor: not-allowed; opacity: 0.4; }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid rgba(201,169,110,0.15); }
+  .btn-ghost:hover:not(:disabled) { border-color: rgba(201,169,110,0.4); color: var(--gold); }
+  .btn-ghost:disabled { opacity: 0.25; cursor: not-allowed; }
+
+  /* STATUS */
+  #status-area { padding: 0 24px 24px; display: none; }
+  #status-area.visible { display: block; }
+  .status-line {
+    display: flex; align-items: center; gap: 10px;
+    padding: 13px 16px; background: var(--surface2);
+    border: 1px solid rgba(201,169,110,0.08); border-radius: 1px;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+  .status-dot.pulse { animation: dotPulse 1.2s infinite; }
+  @keyframes dotPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.25; transform: scale(0.5); }
+  }
+  .status-text { font-size: 12px; letter-spacing: 0.06em; color: var(--text-dim); flex: 1; }
+
+  /* ERROR */
+  #error-area { display: none; padding: 0 24px 24px; }
+  .error-box {
+    padding: 13px 16px; background: rgba(180,60,60,0.07);
+    border: 1px solid rgba(180,60,60,0.18); border-radius: 1px;
+    font-size: 12px; color: #E07070; letter-spacing: 0.04em; line-height: 1.65;
+  }
+
+  /* RESULT */
+  #result-section { display: none; padding: 0 24px 28px; }
+  #result-section.visible { display: block; }
+  .result-label {
+    font-size: 10px; letter-spacing: 0.3em; text-transform: uppercase;
+    color: var(--gold); margin-bottom: 12px; opacity: 0.7;
+  }
+  #result-video { width: 100%; border-radius: 1px; display: block; border: 1px solid rgba(201,169,110,0.12); }
+  .btn-download {
+    margin-top: 12px; display: flex;
+    align-items: center; justify-content: center; gap: 8px; text-decoration: none;
+  }
+
+  footer {
+    margin-top: 32px; font-size: 10px; letter-spacing: 0.2em;
+    text-transform: uppercase; color: var(--text-dim); opacity: 0.35;
+    animation: fadeUp 1s 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<div class="ambient"></div>
+<div class="film-grain"></div>
+
+<div id="app">
+  <header>
+    <p class="eyebrow">iS Clinical · Future of Aesthetics</p>
+    <h1>Blue <em>Carpet</em></h1>
+    <p class="tagline">Step into the scene.</p>
+  </header>
+
+  <div class="card">
+    <div id="camera-section">
+      <div class="bracket tl"></div>
+      <div class="bracket tr"></div>
+      <div class="bracket bl"></div>
+      <div class="bracket br"></div>
+
+      <div class="cam-placeholder" id="placeholder" onclick="initCamera()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <p>Tap to activate camera</p>
+      </div>
+
+      <video id="video-el" autoplay playsinline muted></video>
+      <img id="photo-preview" alt="Captured photo">
+
+      <div id="countdown-overlay">
+        <span class="countdown-num" id="countdown-num">3</span>
+      </div>
+      <div id="flash-overlay"></div>
+    </div>
+
+    <div class="controls">
+      <div class="shimmer-bar" id="shimmer"></div>
+      <button class="btn btn-primary" id="capture-btn" onclick="startCountdown()" disabled>
+        Step onto the carpet
+      </button>
+      <button class="btn btn-ghost" id="retake-btn" onclick="retake()" disabled>
+        Retake
+      </button>
+    </div>
+
+    <div id="status-area">
+      <div class="status-line">
+        <div class="status-dot pulse" id="status-dot"></div>
+        <span class="status-text" id="status-text">Generating your video…</span>
+      </div>
+    </div>
+
+    <div id="error-area">
+      <div class="error-box" id="error-text"></div>
+    </div>
+
+    <div id="result-section">
+      <p class="result-label">Your Blue Carpet Moment</p>
+      <video id="result-video" controls loop autoplay playsinline></video>
+      <a class="btn btn-ghost btn-download" id="download-link" href="#" download="blue-carpet.mp4">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Save Video
+      </a>
+    </div>
+  </div>
+
+  <footer>Powered by Hailuo 2.3 · Replicate</footer>
+</div>
+
+<script>
+// All Replicate calls go through /api/* — the key never touches the browser
+const CARPET_PROMPT =
+  'A glamorous person walks confidently down a dazzling blue carpet at a high-end gala event. ' +
+  'Paparazzi cameras flash on both sides. Elegant well-dressed crowd. ' +
+  'Cinematic slow motion, warm golden lighting, ultra HD, filmic depth of field. [Tracking shot]';
+
+let stream = null;
+let capturedBase64 = null;
+let countdownInterval = null;
+
+const videoEl          = document.getElementById('video-el');
+const photoPreview     = document.getElementById('photo-preview');
+const captureBtn       = document.getElementById('capture-btn');
+const retakeBtn        = document.getElementById('retake-btn');
+const countdownOverlay = document.getElementById('countdown-overlay');
+const countdownNum     = document.getElementById('countdown-num');
+const flashOverlay     = document.getElementById('flash-overlay');
+const placeholder      = document.getElementById('placeholder');
+const shimmer          = document.getElementById('shimmer');
+const statusArea       = document.getElementById('status-area');
+const statusText       = document.getElementById('status-text');
+const statusDot        = document.getElementById('status-dot');
+const errorArea        = document.getElementById('error-area');
+const errorText        = document.getElementById('error-text');
+const resultSection    = document.getElementById('result-section');
+const resultVideo      = document.getElementById('result-video');
+const downloadLink     = document.getElementById('download-link');
+
+async function initCamera() {
+  placeholder.style.pointerEvents = 'none';
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 960 } },
+      audio: false
+    });
+    videoEl.srcObject = stream;
+    videoEl.style.display = 'block';
+    placeholder.style.display = 'none';
+    captureBtn.disabled = false;
+  } catch (err) {
+    placeholder.innerHTML =
+      '<p style="color:#E07070;font-size:12px;padding:24px;text-align:center;line-height:1.7;opacity:1">' +
+      'Camera access denied.<br>Please refresh and allow camera access.</p>';
+  }
+}
+
+function startCountdown() {
+  if (captureBtn.disabled) return;
+  captureBtn.disabled = true;
+  retakeBtn.disabled  = true;
+  hideResult(); hideError();
+  let count = 3;
+  showCountdown(count);
+  countdownInterval = setInterval(() => {
+    count--;
+    if (count <= 0) {
+      clearInterval(countdownInterval);
+      countdownOverlay.classList.remove('visible');
+      capturePhoto();
+    } else {
+      showCountdown(count);
+    }
+  }, 1000);
+}
+
+function showCountdown(n) {
+  countdownNum.textContent = n;
+  countdownOverlay.classList.add('visible');
+  countdownNum.style.animation = 'none';
+  countdownNum.offsetHeight;
+  countdownNum.style.animation = 'countPulse 1s ease-in-out';
+}
+
+function capturePhoto() {
+  flashOverlay.classList.remove('flash');
+  flashOverlay.offsetHeight;
+  flashOverlay.classList.add('flash');
+
+  const vw = videoEl.videoWidth  || 960;
+  const vh = videoEl.videoHeight || 720;
+  const canvas = document.createElement('canvas');
+  canvas.width = vw; canvas.height = vh;
+  const ctx = canvas.getContext('2d');
+  ctx.save();
+  ctx.translate(vw, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(videoEl, 0, 0, vw, vh);
+  ctx.restore();
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  capturedBase64 = dataUrl.split(',')[1];
+  photoPreview.src = dataUrl;
+  photoPreview.style.display = 'block';
+  videoEl.style.display = 'none';
+  retakeBtn.disabled = false;
+  generateVideo();
+}
+
+function retake() {
+  capturedBase64 = null;
+  photoPreview.src = '';
+  photoPreview.style.display = 'none';
+  videoEl.style.display = 'block';
+  hideResult(); hideError();
+  statusArea.style.display = 'none';
+  statusArea.classList.remove('visible');
+  shimmer.classList.remove('active');
+  captureBtn.disabled = false;
+  captureBtn.textContent = 'Step onto the carpet';
+  retakeBtn.disabled = true;
+  statusDot.style.background = 'var(--gold)';
+}
+
+async function generateVideo() {
+  captureBtn.textContent = 'Generating…';
+  captureBtn.disabled = true;
+  showStatus('Sending your photo…');
+
+  try {
+    const body = {
+      input: {
+        prompt: CARPET_PROMPT,
+        first_frame_image: 'data:image/jpeg;base64,' + capturedBase64,
+        duration: 6,
+        resolution: '768p',
+        prompt_optimizer: true
+      }
+    };
+
+    showStatus('Creating your blue carpet moment…');
+
+    // Call our Netlify proxy — no API key in the browser
+    const createRes = await fetch('/api/models/minimax/hailuo-2.3/predictions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Prefer': 'wait'
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!createRes.ok) {
+      const err = await createRes.json().catch(() => ({}));
+      throw new Error(err.detail || 'API error ' + createRes.status);
+    }
+
+    let prediction = await createRes.json();
+
+    const msgs = ['Dressing the scene…', 'Lighting the carpet…', 'Rolling the camera…', 'Almost there…'];
+    let i = 0;
+    while (prediction.status !== 'succeeded' &&
+           prediction.status !== 'failed'    &&
+           prediction.status !== 'canceled') {
+      await sleep(4000);
+      showStatus(msgs[i++ % msgs.length]);
+      const poll = await fetch('/api/predictions/' + prediction.id);
+      prediction = await poll.json();
+    }
+
+    if (prediction.status === 'succeeded') {
+      const url = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
+      if (!url) throw new Error('No video URL returned.');
+      setStatusDone('Your moment is ready');
+      showResult(url);
+    } else {
+      throw new Error(prediction.error || 'Generation failed. Please try again.');
+    }
+
+  } catch (err) {
+    console.error(err);
+    showError('Something went wrong: ' + err.message);
+    captureBtn.disabled = false;
+    captureBtn.textContent = 'Try Again';
+    shimmer.classList.remove('active');
+  }
+}
+
+function showStatus(msg) {
+  statusArea.style.display = 'block';
+  statusArea.classList.add('visible');
+  statusText.textContent = msg;
+  statusDot.classList.add('pulse');
+  statusDot.style.background = 'var(--gold)';
+  shimmer.classList.add('active');
+}
+function setStatusDone(msg) {
+  statusText.textContent = msg;
+  statusDot.classList.remove('pulse');
+  statusDot.style.background = '#6ECF6E';
+  shimmer.classList.remove('active');
+}
+function showResult(url) {
+  resultVideo.src = url;
+  downloadLink.href = url;
+  resultSection.style.display = 'block';
+  resultSection.classList.add('visible');
+  resultSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  captureBtn.disabled = false;
+  captureBtn.textContent = 'Go Again';
+}
+function hideResult() {
+  resultSection.style.display = 'none';
+  resultSection.classList.remove('visible');
+  resultVideo.src = '';
+}
+function showError(msg) { errorArea.style.display = 'block'; errorText.textContent = msg; }
+function hideError()    { errorArea.style.display = 'none'; }
+function sleep(ms)      { return new Promise(r => setTimeout(r, ms)); }
+</script>
+</body>
+</html>
