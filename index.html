@@ -22,7 +22,7 @@
   h1 em { font-style: italic; color: var(--gold); }
   .tagline { margin-top: 14px; font-size: 13px; font-weight: 200; letter-spacing: 0.12em; color: var(--text-dim); }
   .card { width: 100%; max-width: 460px; background: var(--surface); border: 1px solid rgba(201,169,110,0.12); border-radius: 2px; overflow: hidden; animation: fadeUp 1s 0.2s ease both; }
-  #camera-section { position: relative; aspect-ratio: 3/4; background: #050505; overflow: hidden; }
+  #camera-section { position: relative; aspect-ratio: 9/16; background: #050505; overflow: hidden; }
   #video-el { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: none; }
   #photo-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 3; }
   .bracket { position: absolute; width: 24px; height: 24px; border-color: var(--gold); border-style: solid; opacity: 0.4; z-index: 5; transition: opacity 0.4s; }
@@ -123,7 +123,7 @@
   <footer>Powered by Hailuo 2.3 · Replicate</footer>
 </div>
 <script>
-const CARPET_PROMPT = 'The person in this image walks confidently forward down a glamorous blue carpet at a luxury gala. Keep the subject's exact face, hair, body and outfit identical to the starting frame. Do not change their appearance. Paparazzi cameras flash on both sides. Elegant crowd watching. Cinematic slow motion, warm golden lighting, ultra HD. [Tracking shot]';
+const CARPET_PROMPT = 'The subject from the reference image is already mid-stride walking confidently down a dazzling blue carpet. Brilliant camera flashes exploding from all sides, blinding paparazzi lights, glittering gold and blue lights, glamorous gala atmosphere, velvet ropes, luxury crowd cheering. The subject keeps their exact face, hair, skin, outfit from the reference. Slow motion cinematic, lens flares, ultra HD, shallow depth of field. [Tracking shot]';
   'A glamorous person walks confidently down a dazzling blue carpet at a high-end gala event. ' +
   'Paparazzi cameras flash on both sides. Elegant well-dressed crowd. ' +
   'Cinematic slow motion, warm golden lighting, ultra HD, filmic depth of field. [Tracking shot]';
