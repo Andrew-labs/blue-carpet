@@ -33,12 +33,14 @@ export default async (req, context) => {
     const prompts = {
       male:
         "Smooth orbiting glambot camera sweeps 180 degrees around the subject revealing their full outfit from all angles. " +
-        "Camera then pulls back as the subject walks confidently away down a glamorous blue carpet toward the distance. " +
+        "The subject is wearing a sharp black suit. " +
+        "Camera then pulls back as the subject walks confidently away down a glamorous red carpet toward the distance. " +
         "Paparazzi camera flashes fire from both sides. Elegant crowd behind velvet ropes. " +
         "Warm golden lighting. Cinematic slow motion. [Tracking shot, Dolly out]",
       female:
         "Smooth orbiting glambot camera sweeps 180 degrees around the subject revealing their full outfit from all angles. " +
-        "Camera then pulls back as the subject walks gracefully away down a glamorous blue carpet toward the distance. " +
+        "The subject is wearing an elegant black dress. " +
+        "Camera then pulls back as the subject walks gracefully away down a glamorous red carpet toward the distance. " +
         "Paparazzi camera flashes fire from both sides. Elegant crowd behind velvet ropes. " +
         "Warm golden lighting. Cinematic slow motion. [Tracking shot, Dolly out]",
     };
