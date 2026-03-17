@@ -25,28 +25,28 @@ export default async (req, context) => {
       });
     }
 
-    // POST — create Runway Gen-4.5 prediction
+    // POST — create Hailuo 2.3 prediction
     const { imageBase64, gender } = await req.json();
 
-    // Runway Gen-4.5 prompt: describe ONLY motion, not the person.
-    // The model uses the first frame image for appearance.
+    // Glambot-style prompt: orbiting camera reveal then carpet walk
+    // Describe ONLY motion — the model uses the reference image for appearance
     const prompts = {
       male:
-        "The subject walks confidently forward down a glamorous blue carpet. " +
-        "Brilliant paparazzi camera flashes fire from both sides. " +
-        "Velvet rope barriers, elegant cheering crowd, warm golden overhead lighting. " +
-        "Smooth tracking shot at chest level. Cinematic, photorealistic.",
+        "Smooth orbiting glambot camera sweeps 180 degrees around the subject revealing their full outfit from all angles. " +
+        "Camera then pulls back as the subject walks confidently away down a glamorous blue carpet toward the distance. " +
+        "Paparazzi camera flashes fire from both sides. Elegant crowd behind velvet ropes. " +
+        "Warm golden lighting. Cinematic slow motion. [Tracking shot, Dolly out]",
       female:
-        "The subject walks gracefully forward down a glamorous blue carpet. " +
-        "Brilliant paparazzi camera flashes fire from both sides. " +
-        "Velvet rope barriers, elegant cheering crowd, warm golden overhead lighting. " +
-        "Smooth tracking shot at chest level. Cinematic, photorealistic.",
+        "Smooth orbiting glambot camera sweeps 180 degrees around the subject revealing their full outfit from all angles. " +
+        "Camera then pulls back as the subject walks gracefully away down a glamorous blue carpet toward the distance. " +
+        "Paparazzi camera flashes fire from both sides. Elegant crowd behind velvet ropes. " +
+        "Warm golden lighting. Cinematic slow motion. [Tracking shot, Dolly out]",
     };
 
     const prompt = prompts[gender] || prompts.male;
 
     const predictionRes = await fetch(
-      "https://api.replicate.com/v1/models/runwayml/gen-4.5/predictions",
+      "https://api.replicate.com/v1/models/minimax/hailuo-2.3/predictions",
       {
         method: "POST",
         headers: {
@@ -56,9 +56,10 @@ export default async (req, context) => {
         body: JSON.stringify({
           input: {
             prompt,
-            image: `data:image/jpeg;base64,${imageBase64}`,
-            duration: 5,
-            ratio: "720:1280",  // 9:16 portrait
+            first_frame_image: `data:image/jpeg;base64,${imageBase64}`,
+            duration: 6,
+            resolution: "768p",
+            prompt_optimizer: false,
           },
         }),
       }
