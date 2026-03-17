@@ -28,21 +28,27 @@ export default async (req, context) => {
     // POST — create Hailuo 2.3 prediction
     const { imageBase64, gender } = await req.json();
 
-    // Glambot-style prompt: orbiting camera reveal then carpet walk
-    // Describe ONLY motion — the model uses the reference image for appearance
+    // Key principle: DO NOT describe the person's appearance, face, hair, or outfit
+    // in the prompt — the model must derive all of that from the reference image.
+    // The prompt covers ONLY camera movement, scene, and atmosphere so the
+    // subject's likeness is preserved exactly as in the first frame.
     const prompts = {
       male:
-        "Smooth orbiting glambot camera sweeps 180 degrees around the subject revealing their full outfit from all angles. " +
-        "The subject is wearing a sharp black suit. " +
-        "Camera then pulls back as the subject walks confidently away down a glamorous red carpet toward the distance. " +
-        "Paparazzi camera flashes fire from both sides. Elegant crowd behind velvet ropes. " +
-        "Warm golden lighting. Cinematic slow motion. [Tracking shot, Dolly out]",
+        "The subject walks confidently forward down a glamorous red carpet. " +
+        "Camera starts close behind the subject then slowly dollies back and widens " +
+        "to reveal the full red carpet scene. Crowds of fans and photographers line " +
+        "both sides behind gold stanchion ropes. Bright paparazzi camera flashes fire " +
+        "from both sides. Warm golden cinematic lighting. Hyper-realistic. " +
+        "Preserve the subject's exact face and appearance from the first frame. " +
+        "[Tracking shot, Dolly out, Wide angle]",
       female:
-        "Smooth orbiting glambot camera sweeps 180 degrees around the subject revealing their full outfit from all angles. " +
-        "The subject is wearing an elegant black dress. " +
-        "Camera then pulls back as the subject walks gracefully away down a glamorous red carpet toward the distance. " +
-        "Paparazzi camera flashes fire from both sides. Elegant crowd behind velvet ropes. " +
-        "Warm golden lighting. Cinematic slow motion. [Tracking shot, Dolly out]",
+        "The subject walks gracefully forward down a glamorous red carpet. " +
+        "Camera starts close behind the subject then slowly dollies back and widens " +
+        "to reveal the full red carpet scene. Crowds of fans and photographers line " +
+        "both sides behind gold stanchion ropes. Bright paparazzi camera flashes fire " +
+        "from both sides. Warm golden cinematic lighting. Hyper-realistic. " +
+        "Preserve the subject's exact face and appearance from the first frame. " +
+        "[Tracking shot, Dolly out, Wide angle]",
     };
 
     const prompt = prompts[gender] || prompts.male;
