@@ -32,49 +32,51 @@ export default async (req, context) => {
     // in the prompt — the model must derive all of that from the reference image.
     // The prompt covers ONLY camera movement, scene, and atmosphere so the
     // subject's likeness is preserved exactly as in the first frame.
+    //
+    // Two-phase shot structure:
+    // Phase 1 (0-2s): Glambot spin — tight close-up, subject stares directly into
+    //   lens, robotic arm sweeps around them in slow motion.
+    // Phase 2 (2-6s): Subject turns and walks confidently away down the red carpet,
+    //   camera follows from behind revealing the full scene.
     const prompts = {
       male:
-        "The subject is already standing on a glamorous red carpet, facing the camera " +
-        "and the crowd of photographers. Intense bright frontal lighting illuminates " +
-        "the subject's face — warm, high-key, luminous. The camera begins close, " +
-        "framing the subject's face and upper body from a slight low angle. " +
-        "Everything plays in ultra-slow motion — every blink, every breath, every " +
-        "subtle movement suspended in time. The robotic arm camera sweeps in a smooth " +
-        "90-degree arc around the subject from front to side, while simultaneously " +
-        "pulling back and rising to reveal the full red carpet scene behind and around " +
-        "them. As the camera orbits, the subject naturally turns their head to keep " +
-        "facing the lens, posing with calm confidence. The subject's face remains " +
-        "visible and sharp throughout the entire shot. Background crowd of " +
-        "photographers and fans lines both sides behind gold stanchion ropes with red " +
-        "velvet barriers, dissolving into warm glittering bokeh. Rapid paparazzi " +
-        "camera flashes burst continuously from the crowd, blooming into soft light " +
-        "orbs. The red carpet stretches into the distance. Warm golden cinematic " +
-        "tones. The overall feel is weightless, glamorous, and suspended in time — " +
-        "like a single perfect moment stretched into eternity. " +
+        "PHASE ONE: The subject stares directly and confidently into the camera lens " +
+        "with a strong, composed expression — eyes locked forward, never looking away " +
+        "or down. The camera is tight on the subject's face and chest. In ultra-slow " +
+        "motion, a robotic arm sweeps the camera in a smooth arc around the subject " +
+        "over two seconds, orbiting from a front-facing close-up to a side profile " +
+        "while pulling back slightly. Bright warm frontal lighting illuminates the " +
+        "subject's face. Paparazzi flashes burst from the sides, blooming into bokeh. " +
+        "PHASE TWO: The subject turns away from the camera and begins walking " +
+        "confidently forward down a glamorous red carpet. The camera follows from " +
+        "directly behind, slowly pulling back and rising to reveal the full scene — " +
+        "a long red carpet stretching into the distance, dense crowds of fans and " +
+        "photographers lining both sides behind gold stanchion ropes with red velvet " +
+        "barriers. Paparazzi camera flashes fire continuously from both sides. " +
+        "Warm golden cinematic lighting. The subject walks with purpose and confidence " +
+        "into the scene. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Glambot robotic arm shot, Ultra slow motion, Smooth orbital arc front-to-side, " +
-        "High-key frontal lighting, Shallow depth of field bokeh, Red carpet reveal]",
+        "[Glambot robotic arc, Ultra slow motion, Tracking shot from behind, " +
+        "Red carpet reveal, High-key frontal lighting, Shallow depth of field]",
       female:
-        "The subject is already standing on a glamorous red carpet, facing the camera " +
-        "and the crowd of photographers. Intense bright frontal lighting illuminates " +
-        "the subject's face — warm, high-key, luminous. The camera begins close, " +
-        "framing the subject's face and upper body from a slight low angle. " +
-        "Everything plays in ultra-slow motion — every blink, every breath, every " +
-        "subtle movement suspended in time. The robotic arm camera sweeps in a smooth " +
-        "90-degree arc around the subject from front to side, while simultaneously " +
-        "pulling back and rising to reveal the full red carpet scene behind and around " +
-        "them. As the camera orbits, the subject naturally turns their head to keep " +
-        "facing the lens, posing with graceful elegance. The subject's face remains " +
-        "visible and sharp throughout the entire shot. Background crowd of " +
-        "photographers and fans lines both sides behind gold stanchion ropes with red " +
-        "velvet barriers, dissolving into warm glittering bokeh. Rapid paparazzi " +
-        "camera flashes burst continuously from the crowd, blooming into soft light " +
-        "orbs. The red carpet stretches into the distance. Warm golden cinematic " +
-        "tones. The overall feel is weightless, glamorous, and suspended in time — " +
-        "like a single perfect moment stretched into eternity. " +
+        "PHASE ONE: The subject stares directly and confidently into the camera lens " +
+        "with a poised, elegant expression — eyes locked forward, never looking away " +
+        "or down. The camera is tight on the subject's face and chest. In ultra-slow " +
+        "motion, a robotic arm sweeps the camera in a smooth arc around the subject " +
+        "over two seconds, orbiting from a front-facing close-up to a side profile " +
+        "while pulling back slightly. Bright warm frontal lighting illuminates the " +
+        "subject's face. Paparazzi flashes burst from the sides, blooming into bokeh. " +
+        "PHASE TWO: The subject turns away from the camera and begins walking " +
+        "gracefully forward down a glamorous red carpet. The camera follows from " +
+        "directly behind, slowly pulling back and rising to reveal the full scene — " +
+        "a long red carpet stretching into the distance, dense crowds of fans and " +
+        "photographers lining both sides behind gold stanchion ropes with red velvet " +
+        "barriers. Paparazzi camera flashes fire continuously from both sides. " +
+        "Warm golden cinematic lighting. The subject walks with grace and elegance " +
+        "into the scene. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Glambot robotic arm shot, Ultra slow motion, Smooth orbital arc front-to-side, " +
-        "High-key frontal lighting, Shallow depth of field bokeh, Red carpet reveal]",
+        "[Glambot robotic arc, Ultra slow motion, Tracking shot from behind, " +
+        "Red carpet reveal, High-key frontal lighting, Shallow depth of field]",
     };
 
     const prompt = prompts[gender] || prompts.male;
