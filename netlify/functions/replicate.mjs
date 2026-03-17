@@ -34,41 +34,47 @@ export default async (req, context) => {
     // subject's likeness is preserved exactly as in the first frame.
     const prompts = {
       male:
-        "The subject stands poised on a glamorous red carpet, then begins walking " +
-        "forward with slow, fluid confidence. A robotic arm camera executes a sweeping " +
-        "high-speed arc — launching from a tight low-angle close-up of the subject's " +
-        "face and upper body, then rapidly orbiting around them in a smooth 180-degree " +
-        "arc while simultaneously pulling back and rising to reveal the full red carpet " +
-        "scene. The motion plays back in ultra-slow motion, giving every hair movement, " +
-        "fabric ripple, and blink a weightless, hyper-cinematic quality. Dense crowds of " +
-        "fans and photographers line both sides behind gold stanchion ropes. Rapid-fire " +
-        "paparazzi flashes burst from all directions, streaking into soft bokeh orbs in " +
-        "the background. Camera shoots wide open at f/2.8 — subject is razor-sharp while " +
-        "the background crowd dissolves into a warm, glittering blur. Lighting is " +
-        "extremely bright and punchy, blasting the subject from the front to achieve an " +
-        "overexposed, high-key glamour look. Warm golden tones with rich specular " +
-        "highlights on skin and fabric. The overall feel is weightless and suspended in " +
-        "time. Preserve the subject's exact face and appearance from the first frame. " +
-        "[Robotic arm shot, High-speed 1000fps slow motion, Orbital arc dolly, " +
-        "Wide-open aperture bokeh, High-key glamour lighting]",
+        "The subject is already standing on a glamorous red carpet, facing the camera " +
+        "and the crowd of photographers. Intense bright frontal lighting illuminates " +
+        "the subject's face — warm, high-key, luminous. The camera begins close, " +
+        "framing the subject's face and upper body from a slight low angle. " +
+        "Everything plays in ultra-slow motion — every blink, every breath, every " +
+        "subtle movement suspended in time. The robotic arm camera sweeps in a smooth " +
+        "90-degree arc around the subject from front to side, while simultaneously " +
+        "pulling back and rising to reveal the full red carpet scene behind and around " +
+        "them. As the camera orbits, the subject naturally turns their head to keep " +
+        "facing the lens, posing with calm confidence. The subject's face remains " +
+        "visible and sharp throughout the entire shot. Background crowd of " +
+        "photographers and fans lines both sides behind gold stanchion ropes with red " +
+        "velvet barriers, dissolving into warm glittering bokeh. Rapid paparazzi " +
+        "camera flashes burst continuously from the crowd, blooming into soft light " +
+        "orbs. The red carpet stretches into the distance. Warm golden cinematic " +
+        "tones. The overall feel is weightless, glamorous, and suspended in time — " +
+        "like a single perfect moment stretched into eternity. " +
+        "Preserve the subject's exact face and appearance from the first frame. " +
+        "[Glambot robotic arm shot, Ultra slow motion, Smooth orbital arc front-to-side, " +
+        "High-key frontal lighting, Shallow depth of field bokeh, Red carpet reveal]",
       female:
-        "The subject stands poised on a glamorous red carpet, then begins walking " +
-        "forward with slow, graceful confidence. A robotic arm camera executes a sweeping " +
-        "high-speed arc — launching from a tight low-angle close-up of the subject's " +
-        "face and upper body, then rapidly orbiting around them in a smooth 180-degree " +
-        "arc while simultaneously pulling back and rising to reveal the full red carpet " +
-        "scene. The motion plays back in ultra-slow motion, giving every hair movement, " +
-        "fabric ripple, and blink a weightless, hyper-cinematic quality. Dense crowds of " +
-        "fans and photographers line both sides behind gold stanchion ropes. Rapid-fire " +
-        "paparazzi flashes burst from all directions, streaking into soft bokeh orbs in " +
-        "the background. Camera shoots wide open at f/2.8 — subject is razor-sharp while " +
-        "the background crowd dissolves into a warm, glittering blur. Lighting is " +
-        "extremely bright and punchy, blasting the subject from the front to achieve an " +
-        "overexposed, high-key glamour look. Warm golden tones with rich specular " +
-        "highlights on skin and fabric. The overall feel is weightless and suspended in " +
-        "time. Preserve the subject's exact face and appearance from the first frame. " +
-        "[Robotic arm shot, High-speed 1000fps slow motion, Orbital arc dolly, " +
-        "Wide-open aperture bokeh, High-key glamour lighting]",
+        "The subject is already standing on a glamorous red carpet, facing the camera " +
+        "and the crowd of photographers. Intense bright frontal lighting illuminates " +
+        "the subject's face — warm, high-key, luminous. The camera begins close, " +
+        "framing the subject's face and upper body from a slight low angle. " +
+        "Everything plays in ultra-slow motion — every blink, every breath, every " +
+        "subtle movement suspended in time. The robotic arm camera sweeps in a smooth " +
+        "90-degree arc around the subject from front to side, while simultaneously " +
+        "pulling back and rising to reveal the full red carpet scene behind and around " +
+        "them. As the camera orbits, the subject naturally turns their head to keep " +
+        "facing the lens, posing with graceful elegance. The subject's face remains " +
+        "visible and sharp throughout the entire shot. Background crowd of " +
+        "photographers and fans lines both sides behind gold stanchion ropes with red " +
+        "velvet barriers, dissolving into warm glittering bokeh. Rapid paparazzi " +
+        "camera flashes burst continuously from the crowd, blooming into soft light " +
+        "orbs. The red carpet stretches into the distance. Warm golden cinematic " +
+        "tones. The overall feel is weightless, glamorous, and suspended in time — " +
+        "like a single perfect moment stretched into eternity. " +
+        "Preserve the subject's exact face and appearance from the first frame. " +
+        "[Glambot robotic arm shot, Ultra slow motion, Smooth orbital arc front-to-side, " +
+        "High-key frontal lighting, Shallow depth of field bokeh, Red carpet reveal]",
     };
 
     const prompt = prompts[gender] || prompts.male;
