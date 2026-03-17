@@ -35,18 +35,20 @@ export default async (req, context) => {
     //
     // Two-phase shot structure:
     // Phase 1 (0-2s): Glambot spin — tight close-up, subject stares directly into
-    //   lens, robotic arm sweeps around them in slow motion.
+    //   lens, camera sweeps around them in slow motion, background fully blurred.
     // Phase 2 (2-6s): Subject turns and walks confidently away down the red carpet,
     //   camera follows from behind revealing the full scene.
     const prompts = {
       male:
         "PHASE ONE: The subject stares directly and confidently into the camera lens " +
         "with a strong, composed expression — eyes locked forward, never looking away " +
-        "or down. The camera is tight on the subject's face and chest. In ultra-slow " +
-        "motion, a robotic arm sweeps the camera in a smooth arc around the subject " +
-        "over two seconds, orbiting from a front-facing close-up to a side profile " +
-        "while pulling back slightly. Bright warm frontal lighting illuminates the " +
-        "subject's face. Paparazzi flashes burst from the sides, blooming into bokeh. " +
+        "or down. The camera is tight on the subject's face and chest. The background " +
+        "is completely blurred and out of focus — only the subject is sharp. " +
+        "Everything plays in ultra-slow motion. The camera sweeps in a smooth slow arc " +
+        "around the subject over two seconds, gliding from a front-facing close-up to " +
+        "a side profile while pulling back slightly. Bright warm frontal lighting " +
+        "illuminates the subject's face. Soft bokeh light bursts bloom in the " +
+        "blurred background. " +
         "PHASE TWO: The subject turns away from the camera and begins walking " +
         "confidently forward down a glamorous red carpet. The camera follows from " +
         "directly behind, slowly pulling back and rising to reveal the full scene — " +
@@ -56,16 +58,18 @@ export default async (req, context) => {
         "Warm golden cinematic lighting. The subject walks with purpose and confidence " +
         "into the scene. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Glambot robotic arc, Ultra slow motion, Tracking shot from behind, " +
+        "[Glambot arc, Ultra slow motion, Tracking shot from behind, " +
         "Red carpet reveal, High-key frontal lighting, Shallow depth of field]",
       female:
         "PHASE ONE: The subject stares directly and confidently into the camera lens " +
         "with a poised, elegant expression — eyes locked forward, never looking away " +
-        "or down. The camera is tight on the subject's face and chest. In ultra-slow " +
-        "motion, a robotic arm sweeps the camera in a smooth arc around the subject " +
-        "over two seconds, orbiting from a front-facing close-up to a side profile " +
-        "while pulling back slightly. Bright warm frontal lighting illuminates the " +
-        "subject's face. Paparazzi flashes burst from the sides, blooming into bokeh. " +
+        "or down. The camera is tight on the subject's face and chest. The background " +
+        "is completely blurred and out of focus — only the subject is sharp. " +
+        "Everything plays in ultra-slow motion. The camera sweeps in a smooth slow arc " +
+        "around the subject over two seconds, gliding from a front-facing close-up to " +
+        "a side profile while pulling back slightly. Bright warm frontal lighting " +
+        "illuminates the subject's face. Soft bokeh light bursts bloom in the " +
+        "blurred background. " +
         "PHASE TWO: The subject turns away from the camera and begins walking " +
         "gracefully forward down a glamorous red carpet. The camera follows from " +
         "directly behind, slowly pulling back and rising to reveal the full scene — " +
@@ -75,7 +79,7 @@ export default async (req, context) => {
         "Warm golden cinematic lighting. The subject walks with grace and elegance " +
         "into the scene. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Glambot robotic arc, Ultra slow motion, Tracking shot from behind, " +
+        "[Glambot arc, Ultra slow motion, Tracking shot from behind, " +
         "Red carpet reveal, High-key frontal lighting, Shallow depth of field]",
     };
 
