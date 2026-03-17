@@ -34,21 +34,41 @@ export default async (req, context) => {
     // subject's likeness is preserved exactly as in the first frame.
     const prompts = {
       male:
-        "The subject walks confidently forward down a glamorous red carpet. " +
-        "Camera starts close behind the subject then slowly dollies back and widens " +
-        "to reveal the full red carpet scene. Crowds of fans and photographers line " +
-        "both sides behind gold stanchion ropes. Bright paparazzi camera flashes fire " +
-        "from both sides. Warm golden cinematic lighting. Hyper-realistic. " +
-        "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Tracking shot, Dolly out, Wide angle]",
+        "The subject stands poised on a glamorous red carpet, then begins walking " +
+        "forward with slow, fluid confidence. A robotic arm camera executes a sweeping " +
+        "high-speed arc — launching from a tight low-angle close-up of the subject's " +
+        "face and upper body, then rapidly orbiting around them in a smooth 180-degree " +
+        "arc while simultaneously pulling back and rising to reveal the full red carpet " +
+        "scene. The motion plays back in ultra-slow motion, giving every hair movement, " +
+        "fabric ripple, and blink a weightless, hyper-cinematic quality. Dense crowds of " +
+        "fans and photographers line both sides behind gold stanchion ropes. Rapid-fire " +
+        "paparazzi flashes burst from all directions, streaking into soft bokeh orbs in " +
+        "the background. Camera shoots wide open at f/2.8 — subject is razor-sharp while " +
+        "the background crowd dissolves into a warm, glittering blur. Lighting is " +
+        "extremely bright and punchy, blasting the subject from the front to achieve an " +
+        "overexposed, high-key glamour look. Warm golden tones with rich specular " +
+        "highlights on skin and fabric. The overall feel is weightless and suspended in " +
+        "time. Preserve the subject's exact face and appearance from the first frame. " +
+        "[Robotic arm shot, High-speed 1000fps slow motion, Orbital arc dolly, " +
+        "Wide-open aperture bokeh, High-key glamour lighting]",
       female:
-        "The subject walks gracefully forward down a glamorous red carpet. " +
-        "Camera starts close behind the subject then slowly dollies back and widens " +
-        "to reveal the full red carpet scene. Crowds of fans and photographers line " +
-        "both sides behind gold stanchion ropes. Bright paparazzi camera flashes fire " +
-        "from both sides. Warm golden cinematic lighting. Hyper-realistic. " +
-        "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Tracking shot, Dolly out, Wide angle]",
+        "The subject stands poised on a glamorous red carpet, then begins walking " +
+        "forward with slow, graceful confidence. A robotic arm camera executes a sweeping " +
+        "high-speed arc — launching from a tight low-angle close-up of the subject's " +
+        "face and upper body, then rapidly orbiting around them in a smooth 180-degree " +
+        "arc while simultaneously pulling back and rising to reveal the full red carpet " +
+        "scene. The motion plays back in ultra-slow motion, giving every hair movement, " +
+        "fabric ripple, and blink a weightless, hyper-cinematic quality. Dense crowds of " +
+        "fans and photographers line both sides behind gold stanchion ropes. Rapid-fire " +
+        "paparazzi flashes burst from all directions, streaking into soft bokeh orbs in " +
+        "the background. Camera shoots wide open at f/2.8 — subject is razor-sharp while " +
+        "the background crowd dissolves into a warm, glittering blur. Lighting is " +
+        "extremely bright and punchy, blasting the subject from the front to achieve an " +
+        "overexposed, high-key glamour look. Warm golden tones with rich specular " +
+        "highlights on skin and fabric. The overall feel is weightless and suspended in " +
+        "time. Preserve the subject's exact face and appearance from the first frame. " +
+        "[Robotic arm shot, High-speed 1000fps slow motion, Orbital arc dolly, " +
+        "Wide-open aperture bokeh, High-key glamour lighting]",
     };
 
     const prompt = prompts[gender] || prompts.male;
