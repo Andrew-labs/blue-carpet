@@ -17,8 +17,6 @@
     --white: #ffffff;
     --off-white: #f5f3ef;
     --text-dim: #8a8f9e;
-    --surface: rgba(255,255,255,0.04);
-    --surface2: rgba(255,255,255,0.08);
     --border: rgba(184,150,90,0.2);
   }
 
@@ -33,164 +31,260 @@
     overflow-x: hidden;
   }
 
+  /* ── LOADING SCREEN ── */
+  #loading-screen {
+    position: fixed; inset: 0; z-index: 1000;
+    background: var(--navy-deep);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    transition: opacity 0.8s ease, visibility 0.8s ease;
+  }
+  #loading-screen.hidden {
+    opacity: 0; visibility: hidden; pointer-events: none;
+  }
+
+  .loading-inner {
+    display: flex; flex-direction: column; align-items: center; gap: 0;
+    animation: fadeUp 0.8s ease both;
+  }
+
+  .loading-logo {
+    height: 90px;
+    filter: brightness(0) invert(1);
+    animation: logoReveal 1.2s ease both;
+  }
+  @keyframes logoReveal {
+    0%   { opacity: 0; transform: translateY(12px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  .loading-divider {
+    width: 1px; height: 48px;
+    background: linear-gradient(to bottom, rgba(184,150,90,0.6), transparent);
+    margin: 28px 0;
+    animation: lineGrow 1s 0.4s ease both;
+    transform-origin: top;
+  }
+  @keyframes lineGrow {
+    from { transform: scaleY(0); opacity: 0; }
+    to   { transform: scaleY(1); opacity: 1; }
+  }
+
+  .loading-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--white);
+    text-align: center;
+    line-height: 1.3;
+    animation: fadeUp 0.8s 0.5s ease both;
+    opacity: 0;
+    animation-fill-mode: both;
+  }
+  .loading-title em { font-style: italic; color: var(--gold-light); }
+
+  .loading-sub {
+    margin-top: 12px;
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.45em;
+    text-transform: uppercase;
+    color: var(--gold);
+    opacity: 0;
+    animation: fadeUp 0.8s 0.7s ease both;
+    animation-fill-mode: both;
+  }
+
+  /* Progress bar */
+  .loading-progress {
+    margin-top: 48px;
+    width: 180px;
+    opacity: 0;
+    animation: fadeUp 0.8s 0.9s ease both;
+    animation-fill-mode: both;
+  }
+  .progress-track {
+    width: 100%; height: 1px;
+    background: rgba(184,150,90,0.2);
+    border-radius: 1px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--gold-dim), var(--gold-light));
+    width: 0%;
+    animation: progressFill 2.5s 1s cubic-bezier(0.4,0,0.2,1) forwards;
+  }
+  @keyframes progressFill {
+    0%   { width: 0%; }
+    60%  { width: 75%; }
+    100% { width: 100%; }
+  }
+  .progress-label {
+    margin-top: 10px;
+    font-size: 8px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  /* Decorative dots */
+  .loading-dots {
+    display: flex; gap: 6px; margin-top: 28px;
+    opacity: 0; animation: fadeUp 0.8s 1s ease both;
+    animation-fill-mode: both;
+  }
+  .loading-dots span {
+    width: 4px; height: 4px; border-radius: 50%;
+    background: var(--gold);
+    animation: dotBounce 1.4s infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes dotBounce {
+    0%, 80%, 100% { opacity: 0.2; transform: scale(0.8); }
+    40%            { opacity: 1;   transform: scale(1.2); }
+  }
+
+  .loading-tagline {
+    position: absolute;
+    bottom: 40px;
+    font-size: 8px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    opacity: 0.4;
+    animation: fadeUp 0.8s 1.2s ease both;
+    animation-fill-mode: both;
+  }
+
   /* ── BACKGROUND ── */
   .bg-pattern {
     position: fixed; inset: 0; pointer-events: none; z-index: 0;
     background:
-      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(184,150,90,0.08) 0%, transparent 60%),
-      radial-gradient(ellipse 40% 40% at 90% 90%, rgba(26,39,68,0.9) 0%, transparent 70%);
+      radial-gradient(ellipse 80% 50% at 50% -5%, rgba(184,150,90,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 100% 100%, rgba(26,39,68,0.5) 0%, transparent 60%);
   }
   .bg-lines {
-    position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.04;
+    position: fixed; inset: 0; pointer-events: none; z-index: 0; opacity: 0.03;
     background-image: repeating-linear-gradient(
-      90deg,
-      transparent,
-      transparent 60px,
-      rgba(184,150,90,0.5) 60px,
-      rgba(184,150,90,0.5) 61px
+      90deg, transparent, transparent 60px,
+      rgba(184,150,90,0.6) 60px, rgba(184,150,90,0.6) 61px
     );
   }
 
-  /* ── LAYOUT ── */
+  /* ── MAIN APP ── */
   #app {
     position: relative; z-index: 2;
     min-height: 100vh;
     display: flex; flex-direction: column; align-items: center;
     padding: 0 20px 60px;
+    opacity: 0; transition: opacity 0.8s 0.2s ease;
   }
+  #app.visible { opacity: 1; }
 
-  /* ── HEADER BAR ── */
+  /* ── HEADER ── */
   .top-bar {
     width: 100%; max-width: 500px;
     display: flex; align-items: center; justify-content: center;
-    padding: 32px 0 28px;
-    animation: fadeDown 0.8s ease both;
+    padding: 32px 0 24px;
   }
-  .logo-img {
-    height: 64px;
-    filter: brightness(0) invert(1);
-    opacity: 0.95;
-  }
+  .logo-img { height: 60px; filter: brightness(0) invert(1); opacity: 0.95; }
 
   /* ── HERO ── */
-  .hero {
-    text-align: center;
-    margin-bottom: 36px;
-    animation: fadeUp 0.9s 0.1s ease both;
-  }
+  .hero { text-align: center; margin-bottom: 32px; }
   .hero-eyebrow {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.5em;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 16px;
-    opacity: 0.9;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.5em;
+    text-transform: uppercase; color: var(--gold); margin-bottom: 14px; opacity: 0.9;
   }
   .hero-title {
     font-family: 'Playfair Display', serif;
-    font-size: clamp(32px, 7vw, 56px);
-    font-weight: 400;
-    line-height: 1.1;
-    letter-spacing: 0.01em;
-    color: var(--white);
+    font-size: clamp(30px, 7vw, 52px);
+    font-weight: 400; line-height: 1.12; letter-spacing: 0.01em;
   }
-  .hero-title em {
-    font-style: italic;
-    color: var(--gold-light);
-  }
+  .hero-title em { font-style: italic; color: var(--gold-light); }
   .hero-subtitle {
-    margin-top: 16px;
-    font-size: 11px;
-    font-weight: 400;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-dim);
+    margin-top: 14px; font-size: 10px; font-weight: 400;
+    letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim);
   }
-  .gold-rule {
-    width: 40px; height: 1px;
-    background: var(--gold);
-    margin: 20px auto 0;
-    opacity: 0.6;
+  .gold-rule { width: 36px; height: 1px; background: var(--gold); margin: 18px auto 0; opacity: 0.5; }
+
+  /* ── STEPS INDICATOR ── */
+  .steps {
+    display: flex; align-items: center; gap: 0;
+    margin-bottom: 24px;
+    width: 100%; max-width: 460px;
   }
+  .step {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    flex: 1;
+  }
+  .step-num {
+    width: 24px; height: 24px; border-radius: 50%;
+    border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 600; color: var(--text-dim);
+    transition: all 0.3s;
+  }
+  .step.active .step-num {
+    border-color: var(--gold); color: var(--gold);
+    background: rgba(184,150,90,0.1);
+  }
+  .step.done .step-num {
+    border-color: var(--gold); background: var(--gold); color: var(--navy-deep);
+  }
+  .step-label {
+    font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text-dim); transition: color 0.3s; white-space: nowrap;
+  }
+  .step.active .step-label { color: var(--gold); }
+  .step.done .step-label { color: var(--gold-light); }
+  .step-line { flex: 1; height: 1px; background: var(--border); margin: 0 8px 16px; }
 
   /* ── CARD ── */
   .card {
     width: 100%; max-width: 460px;
     background: rgba(255,255,255,0.03);
     border: 1px solid var(--border);
-    border-radius: 3px;
-    overflow: hidden;
-    animation: fadeUp 0.9s 0.2s ease both;
-    backdrop-filter: blur(10px);
+    border-radius: 3px; overflow: hidden;
+    backdrop-filter: blur(8px);
   }
 
-  /* ── GENDER SELECTOR ── */
+  /* ── GENDER ── */
   #gender-section {
     padding: 22px 22px 18px;
     border-bottom: 1px solid var(--border);
-    background: rgba(184,150,90,0.03);
+    background: rgba(184,150,90,0.02);
   }
   .section-label {
-    font-size: 9px;
-    font-weight: 600;
-    letter-spacing: 0.4em;
-    text-transform: uppercase;
-    color: var(--gold);
-    margin-bottom: 14px;
-    display: block;
-    opacity: 0.8;
+    font-size: 9px; font-weight: 600; letter-spacing: 0.4em;
+    text-transform: uppercase; color: var(--gold);
+    margin-bottom: 14px; display: block; opacity: 0.8;
   }
-  .gender-btns {
-    display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-  }
+  .gender-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   .gender-btn {
-    padding: 14px 10px;
+    padding: 16px 10px;
     border: 1px solid rgba(184,150,90,0.2);
-    background: transparent;
-    border-radius: 2px;
-    cursor: pointer;
+    background: transparent; border-radius: 2px; cursor: pointer;
     font-family: 'Montserrat', sans-serif;
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--text-dim);
-    transition: all 0.2s ease;
-    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    font-size: 10px; font-weight: 500;
+    letter-spacing: 0.2em; text-transform: uppercase;
+    color: var(--text-dim); transition: all 0.2s ease;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
   }
-  .gender-btn .icon { font-size: 18px; }
-  .gender-btn .sub { font-size: 8px; letter-spacing: 0.12em; opacity: 0.55; }
-  .gender-btn:hover { border-color: rgba(184,150,90,0.5); color: var(--gold-light); }
-  .gender-btn.selected {
-    background: rgba(184,150,90,0.1);
-    border-color: var(--gold);
-    color: var(--gold-light);
-  }
+  .gender-btn .icon { font-size: 22px; }
+  .gender-btn .sub { font-size: 8px; letter-spacing: 0.12em; opacity: 0.5; }
+  .gender-btn:hover { border-color: rgba(184,150,90,0.5); color: var(--gold-light); background: rgba(184,150,90,0.05); }
+  .gender-btn.selected { background: rgba(184,150,90,0.1); border-color: var(--gold); color: var(--gold-light); }
+  .gender-btn.selected .icon { filter: none; }
 
   /* ── CAMERA ── */
-  #camera-section {
-    position: relative;
-    aspect-ratio: 9/16;
-    background: #060d1e;
-    overflow: hidden;
-  }
-  #video-el {
-    width: 100%; height: 100%; object-fit: cover;
-    transform: scaleX(-1); display: none;
-  }
-  #photo-preview {
-    position: absolute; inset: 0;
-    width: 100%; height: 100%; object-fit: cover;
-    display: none; z-index: 3;
-  }
+  #camera-section { position: relative; aspect-ratio: 9/16; background: #060d1e; overflow: hidden; }
+  #video-el { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); display: none; }
+  #photo-preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 3; }
 
-  /* Corner brackets — iS Clinical style */
-  .bracket {
-    position: absolute; width: 20px; height: 20px;
-    border-color: var(--gold); border-style: solid; z-index: 5;
-    opacity: 0.5; transition: opacity 0.3s;
-  }
+  .bracket { position: absolute; width: 20px; height: 20px; border-color: var(--gold); border-style: solid; z-index: 5; opacity: 0.5; transition: opacity 0.3s; }
   .bracket.tl { top: 16px; left: 16px; border-width: 1px 0 0 1px; }
   .bracket.tr { top: 16px; right: 16px; border-width: 1px 1px 0 0; }
   .bracket.bl { bottom: 16px; left: 16px; border-width: 0 0 1px 1px; }
@@ -198,80 +292,65 @@
   #camera-section:hover .bracket { opacity: 0.9; }
 
   /* Framing guide */
-  #framing-guide {
-    position: absolute; inset: 0; z-index: 6; pointer-events: none;
-    display: none; align-items: center; justify-content: center;
-  }
+  #framing-guide { position: absolute; inset: 0; z-index: 6; pointer-events: none; display: none; align-items: center; justify-content: center; }
   #framing-guide.visible { display: flex; }
   .body-outline {
-    position: relative;
-    width: 38%; height: 78%;
-    border: 1px dashed rgba(184,150,90,0.45);
-    border-radius: 80px 80px 40px 40px;
+    position: relative; width: 38%; height: 78%;
+    border: 1px dashed rgba(184,150,90,0.4); border-radius: 80px 80px 40px 40px;
   }
   .body-outline::before {
-    content: '';
-    position: absolute; top: -14%; left: 50%;
-    transform: translateX(-50%);
-    width: 38%; aspect-ratio: 1;
-    border: 1px dashed rgba(184,150,90,0.45);
-    border-radius: 50%;
+    content: ''; position: absolute; top: -14%; left: 50%; transform: translateX(-50%);
+    width: 38%; aspect-ratio: 1; border: 1px dashed rgba(184,150,90,0.4); border-radius: 50%;
   }
-  .framing-hint-top {
-    position: absolute; top: 12px; left: 50%;
-    transform: translateX(-50%);
-    font-size: 8px; letter-spacing: 0.25em; text-transform: uppercase;
-    color: var(--gold); background: rgba(15,26,51,0.7);
-    padding: 4px 12px; border-radius: 20px; white-space: nowrap;
-    font-family: 'Montserrat', sans-serif; font-weight: 500;
+  .framing-hint {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    font-size: 8px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--gold); background: rgba(15,26,51,0.75);
+    padding: 5px 12px; border-radius: 20px; white-space: nowrap;
+    font-family: 'Montserrat', sans-serif; font-weight: 600;
   }
-  .framing-hint-bottom {
-    position: absolute; bottom: 12px; left: 50%;
-    transform: translateX(-50%);
-    font-size: 8px; letter-spacing: 0.25em; text-transform: uppercase;
-    color: var(--gold); background: rgba(15,26,51,0.7);
-    padding: 4px 12px; border-radius: 20px; white-space: nowrap;
-    font-family: 'Montserrat', sans-serif; font-weight: 500;
-  }
+  .framing-hint.top { top: 10px; }
+  .framing-hint.bottom { bottom: 10px; }
 
-  /* iS Clinical watermark on camera */
   .cam-watermark {
-    position: absolute; bottom: 44px; right: 16px; z-index: 7;
+    position: absolute; bottom: 42px; right: 14px; z-index: 7;
     font-size: 7px; letter-spacing: 0.3em; text-transform: uppercase;
-    color: rgba(184,150,90,0.4); font-family: 'Montserrat', sans-serif;
-    font-weight: 600;
+    color: rgba(184,150,90,0.35); font-family: 'Montserrat', sans-serif; font-weight: 600;
   }
 
   /* Placeholder */
   .cam-placeholder {
     position: absolute; inset: 0;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 14px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
     cursor: pointer; transition: background 0.2s;
   }
   .cam-placeholder:hover { background: rgba(184,150,90,0.03); }
-  .cam-placeholder.disabled { pointer-events: none; opacity: 0.3; }
-  .cam-placeholder svg { width: 32px; height: 32px; opacity: 0.2; color: var(--gold); }
+  .cam-placeholder.disabled { pointer-events: none; opacity: 0.25; }
+  .cam-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    border: 1px solid rgba(184,150,90,0.3);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .cam-icon svg { width: 24px; height: 24px; color: var(--gold); opacity: 0.6; }
   .cam-placeholder p {
     font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase;
-    color: var(--text-dim); opacity: 0.6;
-    font-family: 'Montserrat', sans-serif;
+    color: var(--text-dim); opacity: 0.6; font-family: 'Montserrat', sans-serif;
+  }
+  .cam-placeholder .cam-hint {
+    font-size: 8px; letter-spacing: 0.1em; color: var(--text-dim);
+    opacity: 0.35; text-transform: none;
   }
 
   /* Countdown */
   #countdown-overlay {
-    position: absolute; inset: 0;
-    display: flex; align-items: center; justify-content: center;
-    background: rgba(15,26,51,0.5); z-index: 10;
-    opacity: 0; pointer-events: none; transition: opacity 0.3s;
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(15,26,51,0.55); z-index: 10; opacity: 0; pointer-events: none; transition: opacity 0.3s;
   }
   #countdown-overlay.visible { opacity: 1; }
   .countdown-num {
-    font-family: 'Playfair Display', serif;
-    font-size: 120px; font-weight: 400;
-    color: var(--gold-light); line-height: 1;
-    animation: countPulse 1s ease-in-out;
-    text-shadow: 0 0 60px rgba(184,150,90,0.4);
+    font-family: 'Playfair Display', serif; font-size: 120px; font-weight: 400;
+    color: var(--gold-light); line-height: 1; animation: countPulse 1s ease-in-out;
+    text-shadow: 0 0 60px rgba(184,150,90,0.35);
   }
   @keyframes countPulse {
     0%   { transform: scale(1.5); opacity: 0; }
@@ -279,130 +358,102 @@
     85%  { transform: scale(0.95); opacity: 1; }
     100% { transform: scale(0.9);  opacity: 0; }
   }
-  #flash-overlay {
-    position: absolute; inset: 0; background: white;
-    z-index: 20; opacity: 0; pointer-events: none;
-  }
+  #flash-overlay { position: absolute; inset: 0; background: white; z-index: 20; opacity: 0; pointer-events: none; }
   #flash-overlay.flash { animation: flashAnim 0.4s ease-out forwards; }
   @keyframes flashAnim { 0% { opacity: 1; } 100% { opacity: 0; } }
 
   /* ── CONTROLS ── */
-  .controls { padding: 20px 22px 24px; display: flex; flex-direction: column; gap: 10px; }
-
-  .shimmer-bar {
-    width: 100%; height: 1px;
-    background: linear-gradient(90deg, transparent, var(--gold), transparent);
-    background-size: 200% 100%;
-    animation: shimmer 2s infinite;
-    opacity: 0; transition: opacity 0.3s;
-  }
+  .controls { padding: 18px 22px 22px; display: flex; flex-direction: column; gap: 10px; }
+  .shimmer-bar { width: 100%; height: 1px; background: linear-gradient(90deg, transparent, var(--gold), transparent); background-size: 200% 100%; animation: shimmer 2s infinite; opacity: 0; transition: opacity 0.3s; }
   .shimmer-bar.active { opacity: 1; }
   @keyframes shimmer { 0% { background-position: -100% 0; } 100% { background-position: 200% 0; } }
 
   .btn {
-    width: 100%; padding: 15px;
-    border: none; border-radius: 2px;
-    font-family: 'Montserrat', sans-serif;
-    font-size: 10px; font-weight: 600;
-    letter-spacing: 0.3em; text-transform: uppercase;
-    cursor: pointer; transition: all 0.2s ease;
+    width: 100%; padding: 16px; border: none; border-radius: 2px;
+    font-family: 'Montserrat', sans-serif; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.3em; text-transform: uppercase; cursor: pointer; transition: all 0.2s ease;
   }
   .btn-primary { background: var(--gold); color: var(--navy-deep); }
-  .btn-primary:hover:not(:disabled) { background: var(--gold-light); transform: translateY(-1px); }
+  .btn-primary:hover:not(:disabled) { background: var(--gold-light); transform: translateY(-1px); box-shadow: 0 4px 20px rgba(184,150,90,0.2); }
   .btn-primary:disabled { background: var(--gold-dim); cursor: not-allowed; opacity: 0.5; }
-  .btn-ghost {
-    background: transparent; color: var(--text-dim);
-    border: 1px solid rgba(184,150,90,0.2);
-  }
+  .btn-ghost { background: transparent; color: var(--text-dim); border: 1px solid rgba(184,150,90,0.2); }
   .btn-ghost:hover:not(:disabled) { border-color: rgba(184,150,90,0.5); color: var(--gold-light); }
   .btn-ghost:disabled { opacity: 0.2; cursor: not-allowed; }
 
   /* ── STATUS ── */
-  #status-area { padding: 0 22px 20px; display: none; }
+  #status-area { padding: 0 22px 18px; display: none; }
   #status-area.visible { display: block; }
   .status-line {
-    display: flex; align-items: center; gap: 10px;
-    padding: 13px 16px;
-    background: rgba(184,150,90,0.05);
-    border: 1px solid var(--border);
-    border-radius: 2px;
+    display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+    background: rgba(184,150,90,0.04); border: 1px solid var(--border); border-radius: 2px;
   }
-  .status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--gold); flex-shrink: 0; }
+  .status-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 1px solid rgba(184,150,90,0.3);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
   .status-dot.pulse { animation: dotPulse 1.2s infinite; }
-  @keyframes dotPulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50%       { opacity: 0.2; transform: scale(0.5); }
-  }
-  .status-text { font-size: 11px; letter-spacing: 0.08em; color: var(--text-dim); flex: 1; }
+  @keyframes dotPulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.2; transform: scale(0.5); } }
+  .status-copy { display: flex; flex-direction: column; gap: 3px; }
+  .status-text { font-size: 11px; letter-spacing: 0.06em; color: var(--white); font-weight: 500; }
+  .status-sub { font-size: 9px; letter-spacing: 0.1em; color: var(--text-dim); }
 
   /* ── ERROR ── */
-  #error-area { display: none; padding: 0 22px 20px; }
-  .error-box {
-    padding: 13px 16px;
-    background: rgba(180,60,60,0.06);
-    border: 1px solid rgba(180,60,60,0.2);
-    border-radius: 2px; font-size: 11px;
-    color: #E07070; letter-spacing: 0.04em; line-height: 1.65;
-  }
+  #error-area { display: none; padding: 0 22px 18px; }
+  .error-box { padding: 13px 16px; background: rgba(180,60,60,0.06); border: 1px solid rgba(180,60,60,0.2); border-radius: 2px; font-size: 11px; color: #E07070; letter-spacing: 0.04em; line-height: 1.65; }
 
   /* ── RESULT ── */
   #result-section { display: none; padding: 0 22px 24px; }
   #result-section.visible { display: block; }
-  .result-label {
-    font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase;
-    color: var(--gold); margin-bottom: 12px; opacity: 0.8;
-    font-weight: 600;
-  }
-  #result-video {
-    width: 100%; border-radius: 2px; display: block;
-    border: 1px solid var(--border);
-  }
-  .btn-download {
-    margin-top: 10px; display: flex;
-    align-items: center; justify-content: center; gap: 8px;
-    text-decoration: none;
-  }
+  .result-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .result-label { font-size: 9px; letter-spacing: 0.35em; text-transform: uppercase; color: var(--gold); opacity: 0.8; font-weight: 600; }
+  .result-badge { font-size: 8px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--navy-deep); background: var(--gold); padding: 3px 8px; border-radius: 2px; font-weight: 600; }
+  #result-video { width: 100%; border-radius: 2px; display: block; border: 1px solid var(--border); }
+  .btn-download { margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; }
 
   /* ── FOOTER ── */
-  .footer-block {
-    margin-top: 36px;
-    text-align: center;
-    animation: fadeUp 1s 0.4s ease both;
-  }
-  .footer-logo {
-    height: 28px;
-    filter: brightness(0) invert(1);
-    opacity: 0.2;
-    margin-bottom: 10px;
-  }
-  .footer-text {
-    font-size: 8px; letter-spacing: 0.3em; text-transform: uppercase;
-    color: var(--text-dim); opacity: 0.4;
-  }
+  .footer-block { margin-top: 36px; text-align: center; }
+  .footer-logo { height: 24px; filter: brightness(0) invert(1); opacity: 0.15; margin-bottom: 10px; }
+  .footer-text { font-size: 8px; letter-spacing: 0.28em; text-transform: uppercase; color: var(--text-dim); opacity: 0.35; }
 
-  /* ── ANIMATIONS ── */
   @keyframes fadeUp {
-    from { opacity: 0; transform: translateY(16px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes fadeDown {
-    from { opacity: 0; transform: translateY(-10px); }
+    from { opacity: 0; transform: translateY(14px); }
     to   { opacity: 1; transform: translateY(0); }
   }
 </style>
 </head>
 <body>
+
+<!-- ══ LOADING SCREEN ══ -->
+<div id="loading-screen">
+  <div class="loading-inner">
+    <img class="loading-logo" src="data:image/png;base64,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" alt="iS Clinical Professional">
+    <div class="loading-divider"></div>
+    <h2 class="loading-title">My Life on the<br><em>Blue Carpet</em></h2>
+    <p class="loading-sub">Future of Aesthetics</p>
+    <div class="loading-progress">
+      <div class="progress-track"><div class="progress-fill"></div></div>
+      <p class="progress-label">Preparing your experience</p>
+    </div>
+    <div class="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+  <p class="loading-tagline">iS Clinical Professional · Powered by AI</p>
+</div>
+
+<!-- ══ BACKGROUND ══ -->
 <div class="bg-pattern"></div>
 <div class="bg-lines"></div>
 
+<!-- ══ MAIN APP ══ -->
 <div id="app">
 
-  <!-- TOP BAR -->
   <div class="top-bar">
     <img class="logo-img" src="data:image/png;base64,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" alt="iS Clinical Professional">
   </div>
 
-  <!-- HERO -->
   <div class="hero">
     <p class="hero-eyebrow">Future of Aesthetics · Exclusive Experience</p>
     <h1 class="hero-title">My Life on the<br><em>Blue Carpet</em></h1>
@@ -410,12 +461,29 @@
     <div class="gold-rule"></div>
   </div>
 
-  <!-- CARD -->
+  <!-- STEPS -->
+  <div class="steps" id="steps">
+    <div class="step active" id="step1">
+      <div class="step-num">1</div>
+      <div class="step-label">Select Look</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step2">
+      <div class="step-num">2</div>
+      <div class="step-label">Capture</div>
+    </div>
+    <div class="step-line"></div>
+    <div class="step" id="step3">
+      <div class="step-num">3</div>
+      <div class="step-label">Your Video</div>
+    </div>
+  </div>
+
   <div class="card">
 
     <!-- GENDER -->
     <div id="gender-section">
-      <span class="section-label">Select Your Experience</span>
+      <span class="section-label">Step 1 — Select Your Experience</span>
       <div class="gender-btns">
         <button class="gender-btn" id="btn-male" onclick="selectGender('male')">
           <span class="icon">🤵</span>
@@ -438,16 +506,19 @@
 
       <div id="framing-guide">
         <div class="body-outline"></div>
-        <span class="framing-hint-top">Step back — full look</span>
-        <span class="framing-hint-bottom">Head to toe in frame</span>
+        <span class="framing-hint top">Step back — full look</span>
+        <span class="framing-hint bottom">Head to toe in frame</span>
       </div>
 
       <div class="cam-placeholder disabled" id="placeholder" onclick="initCamera()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-          <circle cx="12" cy="13" r="4"/>
-        </svg>
-        <p id="placeholder-text">Select your experience first</p>
+        <div class="cam-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <p id="placeholder-text">Step 2 — Select your look first</p>
+        <p class="cam-hint">Tap to activate camera</p>
       </div>
 
       <video id="video-el" autoplay playsinline muted></video>
@@ -463,18 +534,23 @@
     <div class="controls">
       <div class="shimmer-bar" id="shimmer"></div>
       <button class="btn btn-primary" id="capture-btn" onclick="startCountdown()" disabled>
-        Step onto the carpet
+        Step onto the Carpet
       </button>
       <button class="btn btn-ghost" id="retake-btn" onclick="retake()" disabled>
-        Retake
+        Retake Photo
       </button>
     </div>
 
     <!-- STATUS -->
     <div id="status-area">
       <div class="status-line">
-        <div class="status-dot pulse" id="status-dot"></div>
-        <span class="status-text" id="status-text">Creating your moment…</span>
+        <div class="status-icon">
+          <div class="status-dot pulse" id="status-dot"></div>
+        </div>
+        <div class="status-copy">
+          <span class="status-text" id="status-text">Creating your moment…</span>
+          <span class="status-sub">iS Clinical AI Experience</span>
+        </div>
       </div>
     </div>
 
@@ -485,7 +561,10 @@
 
     <!-- RESULT -->
     <div id="result-section">
-      <p class="result-label">Your Blue Carpet Moment</p>
+      <div class="result-header">
+        <p class="result-label">Your Blue Carpet Moment</p>
+        <span class="result-badge">Ready</span>
+      </div>
       <video id="result-video" controls loop autoplay playsinline></video>
       <a class="btn btn-ghost btn-download" id="download-link" href="#" download="isclinical-blue-carpet.mp4">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -496,17 +575,25 @@
       </a>
     </div>
 
-  </div><!-- end card -->
+  </div>
 
-  <!-- FOOTER -->
   <div class="footer-block">
     <img class="footer-logo" src="data:image/png;base64,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" alt="iS Clinical">
     <p class="footer-text">iS Clinical Professional · Future of Aesthetics 2026</p>
   </div>
 
-</div><!-- end app -->
+</div>
 
 <script>
+// ── LOADING SCREEN ──────────────────────────────────────────────────────────
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    document.getElementById('loading-screen').classList.add('hidden');
+    document.getElementById('app').classList.add('visible');
+  }, 3200);
+});
+
+// ── APP STATE ───────────────────────────────────────────────────────────────
 let selectedGender = null;
 let stream = null, capturedBase64 = null, countdownInterval = null;
 
@@ -530,12 +617,22 @@ const resultVideo   = document.getElementById('result-video');
 const downloadLink  = document.getElementById('download-link');
 const framingGuide  = document.getElementById('framing-guide');
 
+function setStep(n) {
+  [1,2,3].forEach(i => {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active','done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add('active');
+  });
+}
+
 function selectGender(gender) {
   selectedGender = gender;
   document.getElementById('btn-male').classList.toggle('selected', gender === 'male');
   document.getElementById('btn-female').classList.toggle('selected', gender === 'female');
   placeholder.classList.remove('disabled');
-  placeholderText.textContent = 'Tap to activate camera';
+  placeholderText.textContent = 'Step 2 — Tap to activate camera';
+  setStep(2);
   if (stream) captureBtn.disabled = false;
 }
 
@@ -553,7 +650,7 @@ async function initCamera() {
     framingGuide.classList.add('visible');
     captureBtn.disabled = false;
   } catch (err) {
-    placeholder.innerHTML = '<p style="color:#E07070;font-size:11px;padding:24px;text-align:center;line-height:1.8;opacity:1">Camera access denied.<br>Please refresh and allow access.</p>';
+    placeholder.innerHTML = '<p style="color:#E07070;font-size:11px;padding:24px;text-align:center;line-height:1.8;opacity:1;font-family:Montserrat,sans-serif">Camera access denied.<br>Please refresh and allow access.</p>';
   }
 }
 
@@ -588,6 +685,7 @@ function capturePhoto() {
   capturedBase64 = dataUrl.split(',')[1];
   photoPreview.src = dataUrl; photoPreview.style.display = 'block';
   videoEl.style.display = 'none'; retakeBtn.disabled = false;
+  setStep(3);
   generateVideo();
 }
 
@@ -597,13 +695,14 @@ function retake() {
   hideResult(); hideError();
   statusArea.style.display = 'none'; statusArea.classList.remove('visible');
   shimmer.classList.remove('active'); captureBtn.disabled = false;
-  captureBtn.textContent = 'Step onto the carpet'; retakeBtn.disabled = true;
+  captureBtn.textContent = 'Step onto the Carpet'; retakeBtn.disabled = true;
   statusDot.style.background = 'var(--gold)';
+  setStep(2);
 }
 
 async function generateVideo() {
   captureBtn.textContent = 'Creating…'; captureBtn.disabled = true;
-  showStatus('Preparing your blue carpet moment…');
+  showStatus('Preparing your blue carpet moment…', 'iS Clinical AI Experience');
   try {
     const createRes = await fetch('/api/predict', {
       method: 'POST',
@@ -614,24 +713,24 @@ async function generateVideo() {
     if (!createRes.ok || prediction.error) throw new Error(prediction.error || prediction.detail || 'Failed to start generation');
     if (!prediction.id) throw new Error('No prediction ID returned');
 
-    showStatus('The carpet is being rolled out…');
     const msgs = [
-      'The carpet is being rolled out…',
-      'Paparazzi taking position…',
-      'Lights, camera, action…',
-      'Almost ready for your close-up…'
+      ['The carpet is being rolled out…',    'Setting the scene'],
+      ['Paparazzi taking position…',          'Lighting the flashes'],
+      ['Lights, camera, action…',             'Generating your video'],
+      ['Almost ready for your close-up…',     'Final touches'],
     ];
     let i = 0, result = prediction;
     while (result.status !== 'succeeded' && result.status !== 'failed' && result.status !== 'canceled') {
       await sleep(5000);
-      showStatus(msgs[i++ % msgs.length]);
+      const [main, sub] = msgs[i++ % msgs.length];
+      showStatus(main, sub);
       const pollRes = await fetch('/api/predict?id=' + result.id);
       result = await pollRes.json();
     }
     if (result.status === 'succeeded') {
       const url = Array.isArray(result.output) ? result.output[0] : result.output;
       if (!url) throw new Error('No video returned.');
-      setStatusDone('Your moment is ready');
+      setStatusDone('Your moment is ready ✦', 'Tap play to watch');
       showResult(url);
     } else {
       throw new Error(result.error || 'Generation failed. Please try again.');
@@ -639,19 +738,23 @@ async function generateVideo() {
   } catch (err) {
     console.error(err);
     showError('Something went wrong: ' + err.message);
-    captureBtn.disabled = false; captureBtn.textContent = 'Step onto the carpet';
+    captureBtn.disabled = false; captureBtn.textContent = 'Step onto the Carpet';
     shimmer.classList.remove('active');
   }
 }
 
-function showStatus(msg) {
+function showStatus(main, sub) {
   statusArea.style.display = 'block'; statusArea.classList.add('visible');
-  statusText.textContent = msg; statusDot.classList.add('pulse');
-  statusDot.style.background = 'var(--gold)'; shimmer.classList.add('active');
+  statusText.textContent = main;
+  document.querySelector('.status-sub').textContent = sub || 'iS Clinical AI Experience';
+  statusDot.classList.add('pulse'); statusDot.style.background = 'var(--gold)';
+  shimmer.classList.add('active');
 }
-function setStatusDone(msg) {
-  statusText.textContent = msg; statusDot.classList.remove('pulse');
-  statusDot.style.background = '#6ECF6E'; shimmer.classList.remove('active');
+function setStatusDone(main, sub) {
+  statusText.textContent = main;
+  document.querySelector('.status-sub').textContent = sub || '';
+  statusDot.classList.remove('pulse'); statusDot.style.background = '#6ECF6E';
+  shimmer.classList.remove('active');
 }
 function showResult(url) {
   resultVideo.src = url; downloadLink.href = url;
