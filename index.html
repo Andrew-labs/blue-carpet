@@ -562,7 +562,7 @@ function snap(){
   var cv=document.createElement('canvas');
   cv.width=v.videoWidth||1080; cv.height=v.videoHeight||1920;
   var ctx=cv.getContext('2d');
-  ctx.save(); ctx.translate(cv.width,0); ctx.scale(-1,1); ctx.drawImage(v,0,0,cv.width,cv.height); ctx.restore();
+  ctx.drawImage(v,0,0,cv.width,cv.height);
   var url=cv.toDataURL('image/jpeg',0.92);
   b64=url.split(',')[1];
   el('proc-snap').src=url;
