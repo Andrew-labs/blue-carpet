@@ -28,35 +28,25 @@ export default async (req, context) => {
 
     const prompts = {
       male:
-        "PHASE ONE (0-2s): The subject stands at the entrance of the blue carpet facing " +
-        "directly into the camera. They hold this pose — looking straight into the lens " +
-        "with confidence and composure. The camera is tight on their face and chest. " +
-        "Blinding white paparazzi flashes strobe from both sides continuously. " +
-        "PHASE TWO (2-6s): The subject slowly turns away from the camera and walks " +
-        "forward down the blue carpet with slow, deliberate, confident strides. " +
-        "The camera pulls back and rises in a slow cinematic crane move revealing " +
-        "the full grand venue — enormous hall, long blue carpet stretching into the " +
-        "distance, massive crowds behind gold stanchion ropes, hundreds of photographers " +
-        "with cameras raised, paparazzi flashes firing continuously from both sides. " +
-        "Warm golden cinematic lighting. Subject walks slowly and deliberately, owning every step. " +
-        "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Face to camera hold, Slow turn, Slow deliberate walk, Cinematic crane rise, " +
-        "Blue carpet reveal, Strobing paparazzi flashes, Grand venue, Golden cinematic lighting]",
+        "Static portrait shot for the first 2 seconds. The subject stands perfectly still " +
+        "facing the camera, not moving, not turning, not smiling differently, face unchanged. " +
+        "Camera is locked, not moving. Background is a blue carpet entrance with paparazzi " +
+        "on both sides — their camera flashes strobe brightly from the sides of the frame, " +
+        "lighting up the edges of the shot but not changing the subject's face. " +
+        "After 2 seconds: the subject turns away from camera and walks slowly down the blue " +
+        "carpet into an enormous grand hall. Camera pulls back and rises, revealing long blue " +
+        "carpet, massive crowds behind gold stanchion ropes, hundreds of photographers firing " +
+        "flashes. Warm golden cinematic lighting on the venue. Slow deliberate walking pace.",
       female:
-        "PHASE ONE (0-2s): The subject stands at the entrance of the blue carpet facing " +
-        "directly into the camera. They hold this pose — looking straight into the lens " +
-        "with elegance and poise. The camera is tight on their face and chest. " +
-        "Blinding white paparazzi flashes strobe from both sides continuously. " +
-        "PHASE TWO (2-6s): The subject slowly turns away from the camera and walks " +
-        "forward down the blue carpet with slow, deliberate, graceful strides. " +
-        "The camera pulls back and rises in a slow cinematic crane move revealing " +
-        "the full grand venue — enormous hall, long blue carpet stretching into the " +
-        "distance, massive crowds behind gold stanchion ropes, hundreds of photographers " +
-        "with cameras raised, paparazzi flashes firing continuously from both sides. " +
-        "Warm golden cinematic lighting. Subject walks slowly and gracefully, commanding every step. " +
-        "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Face to camera hold, Slow turn, Slow deliberate walk, Cinematic crane rise, " +
-        "Blue carpet reveal, Strobing paparazzi flashes, Grand venue, Golden cinematic lighting]",
+        "Static portrait shot for the first 2 seconds. The subject stands perfectly still " +
+        "facing the camera, not moving, not turning, not smiling differently, face unchanged. " +
+        "Camera is locked, not moving. Background is a blue carpet entrance with paparazzi " +
+        "on both sides — their camera flashes strobe brightly from the sides of the frame, " +
+        "lighting up the edges of the shot but not changing the subject's face. " +
+        "After 2 seconds: the subject turns away from camera and walks slowly down the blue " +
+        "carpet into an enormous grand hall. Camera pulls back and rises, revealing long blue " +
+        "carpet, massive crowds behind gold stanchion ropes, hundreds of photographers firing " +
+        "flashes. Warm golden cinematic lighting on the venue. Slow deliberate walking pace."
     };
 
     const prompt = prompts[gender] || prompts.male;
