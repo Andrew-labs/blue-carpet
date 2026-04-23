@@ -403,7 +403,7 @@ html, body {
       <div class="fcm fcm-tl"></div><div class="fcm fcm-tr"></div>
       <div class="fcm fcm-bl"></div><div class="fcm fcm-br"></div>
       <div class="f-inner">
-        <div id="fguide"><div class="bshape"></div><span class="fhint t">Step back — full look</span><span class="fhint b">Head to toe in frame</span></div>
+        <div id="fguide"><div class="bshape"></div><span class="fhint t">Step back — full body in frame</span><span class="fhint b">Remove headphones · face forward</span></div>
         <div class="cam-ph off" id="cam-ph" onclick="initCamera()">
           <div class="cam-ret">
             <div class="cam-ret-ring"></div>
@@ -559,10 +559,24 @@ function snap(){
   var f=el('flash-overlay'); f.classList.remove('on'); f.offsetHeight; f.classList.add('on');
   el('fguide').classList.remove('on');
   var v=el('video-el');
+
+  // Composite onto a neutral dark background — removes bedroom/room context
+  // so Hailuo doesn't anchor the first frame to the source environment
   var cv=document.createElement('canvas');
-  cv.width=v.videoWidth||1080; cv.height=v.videoHeight||1920;
+  cv.width=768; cv.height=1024;
   var ctx=cv.getContext('2d');
-  ctx.drawImage(v,0,0,cv.width,cv.height);
+
+  // Dark neutral background
+  ctx.fillStyle='#111118';
+  ctx.fillRect(0,0,cv.width,cv.height);
+
+  // Scale and centre the video frame to fit, preserving aspect ratio
+  var vw=v.videoWidth||1080, vh=v.videoHeight||1920;
+  var scale=Math.min(cv.width/vw, cv.height/vh);
+  var dw=vw*scale, dh=vh*scale;
+  var dx=(cv.width-dw)/2, dy=(cv.height-dh)/2;
+  ctx.drawImage(v, dx, dy, dw, dh);
+
   var url=cv.toDataURL('image/jpeg',0.92);
   b64=url.split(',')[1];
   el('proc-snap').src=url;
