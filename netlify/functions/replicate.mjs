@@ -11,7 +11,6 @@ export default async (req, context) => {
   try {
     const url = new URL(req.url);
 
-    // GET /api/predict?id=xxx — poll prediction status
     if (req.method === "GET" && url.searchParams.get("id")) {
       const predictionId = url.searchParams.get("id");
       const response = await fetch(
@@ -25,42 +24,39 @@ export default async (req, context) => {
       });
     }
 
-    // POST — create Hailuo 2.3 prediction
     const { imageBase64, gender } = await req.json();
 
     const prompts = {
       male:
-        "Cinematic tracking shot. The subject is already standing at the entrance of a " +
-        "glamorous blue carpet, back to camera, poised and still for one brief moment. " +
-        "Then they begin walking forward down the carpet — slow, deliberate, confident strides. " +
-        "The entire video takes place on the blue carpet — no bedroom, no indoor room, " +
-        "no transition. The scene begins on the carpet and stays on the carpet. " +
-        "Blinding white paparazzi camera flashes strobe relentlessly from both sides — " +
-        "hundreds of photographers firing continuously. " +
-        "The camera rises slowly and pulls back revealing an enormous grand venue, " +
-        "long blue carpet stretching into the distance, massive crowds behind gold " +
-        "stanchion ropes on both sides. Subject walks slowly with total confidence, " +
-        "taking long deliberate strides. Warm golden cinematic lighting. " +
+        "PHASE ONE (0-2s): The subject stands at the entrance of the blue carpet facing " +
+        "directly into the camera. They hold this pose — looking straight into the lens " +
+        "with confidence and composure. The camera is tight on their face and chest. " +
+        "Blinding white paparazzi flashes strobe from both sides continuously. " +
+        "PHASE TWO (2-6s): The subject slowly turns away from the camera and walks " +
+        "forward down the blue carpet with slow, deliberate, confident strides. " +
+        "The camera pulls back and rises in a slow cinematic crane move revealing " +
+        "the full grand venue — enormous hall, long blue carpet stretching into the " +
+        "distance, massive crowds behind gold stanchion ropes, hundreds of photographers " +
+        "with cameras raised, paparazzi flashes firing continuously from both sides. " +
+        "Warm golden cinematic lighting. Subject walks slowly and deliberately, owning every step. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Blue carpet entrance, Slow deliberate walk, Cinematic crane rise, " +
-        "Tracking shot from behind, Strobing paparazzi flashes, Grand venue, " +
-        "Golden cinematic lighting, No bedroom, No indoor room]",
+        "[Face to camera hold, Slow turn, Slow deliberate walk, Cinematic crane rise, " +
+        "Blue carpet reveal, Strobing paparazzi flashes, Grand venue, Golden cinematic lighting]",
       female:
-        "Cinematic tracking shot. The subject is already standing at the entrance of a " +
-        "glamorous blue carpet, back to camera, poised and still for one brief moment. " +
-        "Then they begin walking forward down the carpet — slow, deliberate, graceful strides. " +
-        "The entire video takes place on the blue carpet — no bedroom, no indoor room, " +
-        "no transition. The scene begins on the carpet and stays on the carpet. " +
-        "Blinding white paparazzi camera flashes strobe relentlessly from both sides — " +
-        "hundreds of photographers firing continuously. " +
-        "The camera rises slowly and pulls back revealing an enormous grand venue, " +
-        "long blue carpet stretching into the distance, massive crowds behind gold " +
-        "stanchion ropes on both sides. Subject walks slowly with total grace and elegance, " +
-        "taking long deliberate strides. Warm golden cinematic lighting. " +
+        "PHASE ONE (0-2s): The subject stands at the entrance of the blue carpet facing " +
+        "directly into the camera. They hold this pose — looking straight into the lens " +
+        "with elegance and poise. The camera is tight on their face and chest. " +
+        "Blinding white paparazzi flashes strobe from both sides continuously. " +
+        "PHASE TWO (2-6s): The subject slowly turns away from the camera and walks " +
+        "forward down the blue carpet with slow, deliberate, graceful strides. " +
+        "The camera pulls back and rises in a slow cinematic crane move revealing " +
+        "the full grand venue — enormous hall, long blue carpet stretching into the " +
+        "distance, massive crowds behind gold stanchion ropes, hundreds of photographers " +
+        "with cameras raised, paparazzi flashes firing continuously from both sides. " +
+        "Warm golden cinematic lighting. Subject walks slowly and gracefully, commanding every step. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Blue carpet entrance, Slow deliberate walk, Cinematic crane rise, " +
-        "Tracking shot from behind, Strobing paparazzi flashes, Grand venue, " +
-        "Golden cinematic lighting, No bedroom, No indoor room]",
+        "[Face to camera hold, Slow turn, Slow deliberate walk, Cinematic crane rise, " +
+        "Blue carpet reveal, Strobing paparazzi flashes, Grand venue, Golden cinematic lighting]",
     };
 
     const prompt = prompts[gender] || prompts.male;
