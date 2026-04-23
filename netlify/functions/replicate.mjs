@@ -28,59 +28,40 @@ export default async (req, context) => {
     // POST — create Hailuo 2.3 prediction
     const { imageBase64, gender } = await req.json();
 
-    // Key principle: DO NOT describe the person's appearance, face, hair, or outfit
-    // in the prompt — the model must derive all of that from the reference image.
-    // The prompt covers ONLY camera movement, scene, and atmosphere so the
-    // subject's likeness is preserved exactly as in the first frame.
-    //
-    // Two-phase shot structure:
-    // Phase 1 (0-2s): Glambot spin — tight close-up, subject stares directly into
-    //   lens, camera sweeps around them in slow motion, background fully blurred.
-    // Phase 2 (2-6s): Subject turns and walks confidently away down the red carpet,
-    //   camera follows from behind revealing the full scene.
     const prompts = {
       male:
-        "PHASE ONE: The subject stares directly and confidently into the camera lens " +
-        "with a strong, composed expression — eyes locked forward, never looking away " +
-        "or down. The camera is tight on the subject's face and chest. The background " +
-        "is completely blurred and out of focus — only the subject is sharp. " +
-        "Everything plays in ultra-slow motion. The camera sweeps in a smooth slow arc " +
-        "around the subject over two seconds, gliding from a front-facing close-up to " +
-        "a side profile while pulling back slightly. Bright warm frontal lighting " +
-        "illuminates the subject's face. Soft bokeh light bursts bloom in the " +
-        "blurred background. " +
-        "PHASE TWO: The subject turns away from the camera and begins walking " +
-        "confidently forward down a glamorous red carpet. The camera follows from " +
-        "directly behind, slowly pulling back and rising to reveal the full scene — " +
-        "a long red carpet stretching into the distance, dense crowds of fans and " +
-        "photographers lining both sides behind gold stanchion ropes with red velvet " +
-        "barriers. Paparazzi camera flashes fire continuously from both sides. " +
-        "Warm golden cinematic lighting. The subject walks with purpose and confidence " +
-        "into the scene. " +
+        "PHASE ONE (0-1s): Glambot close-up. The subject stares directly and confidently " +
+        "into the camera lens — eyes locked forward. The camera is extremely tight on the " +
+        "subject's face. Background is fully blurred bokeh. Ultra slow motion. The camera " +
+        "makes a brief smooth arc sweep around the subject over one second, from front-facing " +
+        "to slight side profile. Bright warm frontal lighting on the subject's face. " +
+        "PHASE TWO (1-6s): The subject turns and walks confidently away down a glamorous " +
+        "blue carpet. The camera immediately pulls back and rises, following from behind to " +
+        "reveal the full scene. Explosive strobing paparazzi flash bursts erupt relentlessly " +
+        "from both sides — blinding white camera flashes firing every half second from dense " +
+        "crowds of photographers. Long blue carpet stretches into the distance. Fans packed " +
+        "behind gold stanchion ropes on both sides. Warm golden cinematic lighting. Subject " +
+        "walks with purpose and confidence. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Glambot arc, Ultra slow motion, Tracking shot from behind, " +
-        "Red carpet reveal, High-key frontal lighting, Shallow depth of field]",
+        "[Glambot arc, Ultra slow motion phase one, Tracking shot from behind phase two, " +
+        "Blue carpet reveal, Strobing paparazzi flashes, Shallow depth of field]",
       female:
-        "PHASE ONE: The subject stares directly and confidently into the camera lens " +
-        "with a poised, elegant expression — eyes locked forward, never looking away " +
-        "or down. The camera is tight on the subject's face and chest. The background " +
-        "is completely blurred and out of focus — only the subject is sharp. " +
-        "Everything plays in ultra-slow motion. The camera sweeps in a smooth slow arc " +
-        "around the subject over two seconds, gliding from a front-facing close-up to " +
-        "a side profile while pulling back slightly. Bright warm frontal lighting " +
-        "illuminates the subject's face. Soft bokeh light bursts bloom in the " +
-        "blurred background. " +
-        "PHASE TWO: The subject turns away from the camera and begins walking " +
-        "gracefully forward down a glamorous red carpet. The camera follows from " +
-        "directly behind, slowly pulling back and rising to reveal the full scene — " +
-        "a long red carpet stretching into the distance, dense crowds of fans and " +
-        "photographers lining both sides behind gold stanchion ropes with red velvet " +
-        "barriers. Paparazzi camera flashes fire continuously from both sides. " +
-        "Warm golden cinematic lighting. The subject walks with grace and elegance " +
-        "into the scene. " +
+        "PHASE ONE (0-1s): Glambot close-up. The subject stares directly and confidently " +
+        "into the camera lens — eyes locked forward with a poised elegant expression. " +
+        "The camera is extremely tight on the subject's face. Background is fully blurred bokeh. " +
+        "Ultra slow motion. The camera makes a brief smooth arc sweep around the subject " +
+        "over one second, from front-facing to slight side profile. Bright warm frontal " +
+        "lighting on the subject's face. " +
+        "PHASE TWO (1-6s): The subject turns and walks gracefully away down a glamorous " +
+        "blue carpet. The camera immediately pulls back and rises, following from behind to " +
+        "reveal the full scene. Explosive strobing paparazzi flash bursts erupt relentlessly " +
+        "from both sides — blinding white camera flashes firing every half second from dense " +
+        "crowds of photographers. Long blue carpet stretches into the distance. Fans packed " +
+        "behind gold stanchion ropes on both sides. Warm golden cinematic lighting. Subject " +
+        "walks with grace and elegance. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Glambot arc, Ultra slow motion, Tracking shot from behind, " +
-        "Red carpet reveal, High-key frontal lighting, Shallow depth of field]",
+        "[Glambot arc, Ultra slow motion phase one, Tracking shot from behind phase two, " +
+        "Blue carpet reveal, Strobing paparazzi flashes, Shallow depth of field]",
     };
 
     const prompt = prompts[gender] || prompts.male;
