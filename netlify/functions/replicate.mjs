@@ -28,47 +28,42 @@ export default async (req, context) => {
     // POST — create Hailuo 2.3 prediction
     const { imageBase64, gender } = await req.json();
 
-    // Likeness preservation strategy:
-    // - No clothing changes (forces full-body reconstruction which bleeds into face)
-    // - No camera arc/rotation (model invents unseen angles, degrading likeness)
-    // - No lighting changes (relit faces drift from source)
-    // - Phase 1 is a slow subtle push-in only, keeping the face locked
-    // - All appearance details derived strictly from the first frame
+    // Strategy: skip the glambot phase entirely — Hailuo can't reliably execute it
+    // in 6 seconds without killing the walk reveal. Full 6s is the carpet money shot.
+    // Flashes are described first and most aggressively so the model prioritises them.
     const prompts = {
       male:
-        "PHASE ONE (0-1s): Glambot close-up. The subject stares directly and confidently " +
-        "into the camera lens — eyes locked forward, strong composed expression. " +
-        "The camera is tight on the subject's face. Background is fully blurred bokeh. " +
-        "Ultra slow motion. The camera makes a very slow subtle push-in toward the subject's " +
-        "face — no rotation, no arc, no angle change. Preserve the exact lighting from the " +
-        "first frame. Do not alter the subject's face, features, or appearance in any way. " +
-        "PHASE TWO (1-6s): The subject turns and walks confidently away down a glamorous " +
-        "blue carpet. The camera immediately pulls back and rises, following from behind to " +
-        "reveal the full scene. Explosive strobing paparazzi flash bursts erupt relentlessly " +
-        "from both sides — blinding white camera flashes firing every half second from dense " +
-        "crowds of photographers. Long blue carpet stretches into the distance. Fans packed " +
-        "behind gold stanchion ropes on both sides. Warm golden cinematic lighting. Subject " +
-        "walks with purpose and confidence. " +
-        "Preserve the subject's exact face, features, and appearance from the first frame. " +
-        "[Ultra slow motion phase one, Subtle push-in only, Tracking shot from behind phase two, " +
-        "Blue carpet reveal, Strobing paparazzi flashes, Shallow depth of field]",
+        "The subject turns away from camera and immediately begins walking confidently " +
+        "down a long glamorous blue carpet. The instant they turn, blinding white paparazzi " +
+        "camera flashes explode continuously from both sides — strobing, relentless, " +
+        "overwhelming flashes firing every fraction of a second from hundreds of photographers " +
+        "packed tightly on both sides. The camera starts low and close behind the subject, " +
+        "then dramatically rises and pulls back in a slow cinematic crane move, revealing the " +
+        "full grandeur of the scene — an enormous venue with a long blue carpet stretching far " +
+        "into the distance, massive cheering crowds behind gold stanchion ropes on both sides, " +
+        "photographers everywhere with cameras raised. Subject walks with total confidence and " +
+        "purpose, owning every step. Warm dramatic golden cinematic lighting floods the scene. " +
+        "The atmosphere is electric, glamorous, overwhelming. " +
+        "Preserve the subject's exact face and appearance from the first frame. " +
+        "[Cinematic crane rise, Tracking shot from behind, Blue carpet reveal, " +
+        "Continuous strobing paparazzi flashes, Massive crowd, High glamour, " +
+        "Golden dramatic lighting]",
       female:
-        "PHASE ONE (0-1s): Glambot close-up. The subject stares directly and confidently " +
-        "into the camera lens — eyes locked forward, poised elegant expression. " +
-        "The camera is tight on the subject's face. Background is fully blurred bokeh. " +
-        "Ultra slow motion. The camera makes a very slow subtle push-in toward the subject's " +
-        "face — no rotation, no arc, no angle change. Preserve the exact lighting from the " +
-        "first frame. Do not alter the subject's face, features, or appearance in any way. " +
-        "PHASE TWO (1-6s): The subject turns and walks gracefully away down a glamorous " +
-        "blue carpet. The camera immediately pulls back and rises, following from behind to " +
-        "reveal the full scene. Explosive strobing paparazzi flash bursts erupt relentlessly " +
-        "from both sides — blinding white camera flashes firing every half second from dense " +
-        "crowds of photographers. Long blue carpet stretches into the distance. Fans packed " +
-        "behind gold stanchion ropes on both sides. Warm golden cinematic lighting. Subject " +
-        "walks with grace and elegance. " +
-        "Preserve the subject's exact face, features, and appearance from the first frame. " +
-        "[Ultra slow motion phase one, Subtle push-in only, Tracking shot from behind phase two, " +
-        "Blue carpet reveal, Strobing paparazzi flashes, Shallow depth of field]",
+        "The subject turns away from camera and immediately begins walking gracefully " +
+        "down a long glamorous blue carpet. The instant they turn, blinding white paparazzi " +
+        "camera flashes explode continuously from both sides — strobing, relentless, " +
+        "overwhelming flashes firing every fraction of a second from hundreds of photographers " +
+        "packed tightly on both sides. The camera starts low and close behind the subject, " +
+        "then dramatically rises and pulls back in a slow cinematic crane move, revealing the " +
+        "full grandeur of the scene — an enormous venue with a long blue carpet stretching far " +
+        "into the distance, massive cheering crowds behind gold stanchion ropes on both sides, " +
+        "photographers everywhere with cameras raised. Subject walks with total grace and " +
+        "elegance, commanding the carpet. Warm dramatic golden cinematic lighting floods the scene. " +
+        "The atmosphere is electric, glamorous, overwhelming. " +
+        "Preserve the subject's exact face and appearance from the first frame. " +
+        "[Cinematic crane rise, Tracking shot from behind, Blue carpet reveal, " +
+        "Continuous strobing paparazzi flashes, Massive crowd, High glamour, " +
+        "Golden dramatic lighting]",
     };
 
     const prompt = prompts[gender] || prompts.male;
