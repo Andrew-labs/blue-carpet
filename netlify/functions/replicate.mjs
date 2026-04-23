@@ -30,21 +30,22 @@ export default async (req, context) => {
 
     const prompts = {
       male:
-        "PHASE ONE (0-1s): Glambot close-up. The subject stares directly and confidently " +
-        "into the camera lens — eyes locked forward. The camera is extremely tight on the " +
-        "subject's face. Background is fully blurred bokeh. Ultra slow motion. The camera " +
-        "makes a brief smooth arc sweep around the subject over one second, from front-facing " +
-        "to slight side profile. Bright warm frontal lighting on the subject's face. " +
+        "PHASE ONE (0-1s): Glambot close-up. The subject is wearing a sharp black tuxedo. " +
+        "The subject stares directly and confidently into the camera lens — eyes locked forward. " +
+        "The camera is extremely tight on the subject's face and chest. Background is fully " +
+        "blurred bokeh. Ultra slow motion. The camera makes a brief smooth arc sweep around " +
+        "the subject over one second, from front-facing to slight side profile. Bright warm " +
+        "frontal lighting on the subject's face. " +
         "PHASE TWO (1-6s): The subject turns and walks confidently away down a glamorous " +
-        "blue carpet. The camera immediately pulls back and rises, following from behind to " +
-        "reveal the full scene. Explosive strobing paparazzi flash bursts erupt relentlessly " +
-        "from both sides — blinding white camera flashes firing every half second from dense " +
-        "crowds of photographers. Long blue carpet stretches into the distance. Fans packed " +
-        "behind gold stanchion ropes on both sides. Warm golden cinematic lighting. Subject " +
-        "walks with purpose and confidence. " +
+        "blue carpet, black tuxedo visible from behind. The camera immediately pulls back and " +
+        "rises, following from behind to reveal the full scene. Explosive strobing paparazzi " +
+        "flash bursts erupt relentlessly from both sides — blinding white camera flashes firing " +
+        "every half second from dense crowds of photographers. Long blue carpet stretches into " +
+        "the distance. Fans packed behind gold stanchion ropes on both sides. Warm golden " +
+        "cinematic lighting. Subject walks with purpose and confidence. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
         "[Glambot arc, Ultra slow motion phase one, Tracking shot from behind phase two, " +
-        "Blue carpet reveal, Strobing paparazzi flashes, Shallow depth of field]",
+        "Blue carpet reveal, Strobing paparazzi flashes, Black tuxedo, Shallow depth of field]",
       female:
         "PHASE ONE (0-1s): Glambot close-up. The subject stares directly and confidently " +
         "into the camera lens — eyes locked forward with a poised elegant expression. " +
