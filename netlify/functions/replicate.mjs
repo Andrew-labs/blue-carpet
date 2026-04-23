@@ -28,25 +28,31 @@ export default async (req, context) => {
 
     const prompts = {
       male:
-        "Static portrait shot for the first 2 seconds. The subject stands perfectly still " +
-        "facing the camera, not moving, not turning, not smiling differently, face unchanged. " +
-        "Camera is locked, not moving. Background is a blue carpet entrance with paparazzi " +
-        "on both sides — their camera flashes strobe brightly from the sides of the frame, " +
-        "lighting up the edges of the shot but not changing the subject's face. " +
-        "After 2 seconds: the subject turns away from camera and walks slowly down the blue " +
-        "carpet into an enormous grand hall. Camera pulls back and rises, revealing long blue " +
-        "carpet, massive crowds behind gold stanchion ropes, hundreds of photographers firing " +
-        "flashes. Warm golden cinematic lighting on the venue. Slow deliberate walking pace.",
+        "Ultra slow motion close-up. The camera begins directly in front of the subject " +
+        "and slowly pushes in while making a very tight shallow arc of no more than " +
+        "30 degrees around the subject — taking the full 2 seconds. " +
+        "Background is completely blurred bokeh throughout — no background detail visible. " +
+        "Soft even frontal lighting on the subject's face only — no side lighting, " +
+        "no relighting, no flash hitting the face directly. " +
+        "White camera flash bursts appear only in the blurred background edges, " +
+        "not touching the face. Subject is still and composed, looking into the camera. " +
+        "After 2 seconds the subject turns and walks slowly down a blue carpet into " +
+        "an enormous grand hall. Camera pulls back revealing long blue carpet, massive " +
+        "crowds behind gold stanchion ropes, paparazzi firing flashes on both sides. " +
+        "Slow deliberate walk. Golden cinematic lighting on the venue.",
       female:
-        "Static portrait shot for the first 2 seconds. The subject stands perfectly still " +
-        "facing the camera, not moving, not turning, not smiling differently, face unchanged. " +
-        "Camera is locked, not moving. Background is a blue carpet entrance with paparazzi " +
-        "on both sides — their camera flashes strobe brightly from the sides of the frame, " +
-        "lighting up the edges of the shot but not changing the subject's face. " +
-        "After 2 seconds: the subject turns away from camera and walks slowly down the blue " +
-        "carpet into an enormous grand hall. Camera pulls back and rises, revealing long blue " +
-        "carpet, massive crowds behind gold stanchion ropes, hundreds of photographers firing " +
-        "flashes. Warm golden cinematic lighting on the venue. Slow deliberate walking pace."
+        "Ultra slow motion close-up. The camera begins directly in front of the subject " +
+        "and slowly pushes in while making a very tight shallow arc of no more than " +
+        "30 degrees around the subject — taking the full 2 seconds. " +
+        "Background is completely blurred bokeh throughout — no background detail visible. " +
+        "Soft even frontal lighting on the subject's face only — no side lighting, " +
+        "no relighting, no flash hitting the face directly. " +
+        "White camera flash bursts appear only in the blurred background edges, " +
+        "not touching the face. Subject is still and composed, looking into the camera. " +
+        "After 2 seconds the subject turns and walks slowly down a blue carpet into " +
+        "an enormous grand hall. Camera pulls back revealing long blue carpet, massive " +
+        "crowds behind gold stanchion ropes, paparazzi firing flashes on both sides. " +
+        "Slow deliberate walk. Golden cinematic lighting on the venue."
     };
 
     const prompt = prompts[gender] || prompts.male;
