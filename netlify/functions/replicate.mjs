@@ -30,41 +30,37 @@ export default async (req, context) => {
 
     const prompts = {
       male:
-        "The subject turns away from camera and begins walking very slowly and deliberately " +
-        "down a long glamorous blue carpet — unhurried, measured, confident steps. " +
-        "The pace is slow motion. Every step is intentional and unhurried. " +
-        "The instant they turn, blinding white paparazzi camera flashes explode continuously " +
-        "from both sides — strobing, relentless, overwhelming flashes firing every fraction " +
-        "of a second from hundreds of photographers packed tightly on both sides. " +
-        "The camera starts low and close behind the subject, then dramatically rises and pulls " +
-        "back in a slow cinematic crane move, revealing the full grandeur of the scene — an " +
-        "enormous venue with a long blue carpet stretching far into the distance, massive " +
-        "cheering crowds behind gold stanchion ropes on both sides, photographers everywhere " +
-        "with cameras raised. Subject walks with total confidence and gravitas, slow and " +
-        "deliberate, owning every step. Warm dramatic golden cinematic lighting floods the scene. " +
-        "The atmosphere is electric, glamorous, overwhelming. " +
+        "Cinematic tracking shot. The subject is already standing at the entrance of a " +
+        "glamorous blue carpet, back to camera, poised and still for one brief moment. " +
+        "Then they begin walking forward down the carpet — slow, deliberate, confident strides. " +
+        "The entire video takes place on the blue carpet — no bedroom, no indoor room, " +
+        "no transition. The scene begins on the carpet and stays on the carpet. " +
+        "Blinding white paparazzi camera flashes strobe relentlessly from both sides — " +
+        "hundreds of photographers firing continuously. " +
+        "The camera rises slowly and pulls back revealing an enormous grand venue, " +
+        "long blue carpet stretching into the distance, massive crowds behind gold " +
+        "stanchion ropes on both sides. Subject walks slowly with total confidence, " +
+        "taking long deliberate strides. Warm golden cinematic lighting. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Slow motion walk, Cinematic crane rise, Tracking shot from behind, " +
-        "Blue carpet reveal, Continuous strobing paparazzi flashes, Massive crowd, " +
-        "High glamour, Golden dramatic lighting]",
+        "[Blue carpet entrance, Slow deliberate walk, Cinematic crane rise, " +
+        "Tracking shot from behind, Strobing paparazzi flashes, Grand venue, " +
+        "Golden cinematic lighting, No bedroom, No indoor room]",
       female:
-        "The subject turns away from camera and begins walking very slowly and gracefully " +
-        "down a long glamorous blue carpet — unhurried, measured, elegant steps. " +
-        "The pace is slow motion. Every step is intentional and unhurried. " +
-        "The instant they turn, blinding white paparazzi camera flashes explode continuously " +
-        "from both sides — strobing, relentless, overwhelming flashes firing every fraction " +
-        "of a second from hundreds of photographers packed tightly on both sides. " +
-        "The camera starts low and close behind the subject, then dramatically rises and pulls " +
-        "back in a slow cinematic crane move, revealing the full grandeur of the scene — an " +
-        "enormous venue with a long blue carpet stretching far into the distance, massive " +
-        "cheering crowds behind gold stanchion ropes on both sides, photographers everywhere " +
-        "with cameras raised. Subject walks with total grace and elegance, slow and deliberate, " +
-        "commanding every step. Warm dramatic golden cinematic lighting floods the scene. " +
-        "The atmosphere is electric, glamorous, overwhelming. " +
+        "Cinematic tracking shot. The subject is already standing at the entrance of a " +
+        "glamorous blue carpet, back to camera, poised and still for one brief moment. " +
+        "Then they begin walking forward down the carpet — slow, deliberate, graceful strides. " +
+        "The entire video takes place on the blue carpet — no bedroom, no indoor room, " +
+        "no transition. The scene begins on the carpet and stays on the carpet. " +
+        "Blinding white paparazzi camera flashes strobe relentlessly from both sides — " +
+        "hundreds of photographers firing continuously. " +
+        "The camera rises slowly and pulls back revealing an enormous grand venue, " +
+        "long blue carpet stretching into the distance, massive crowds behind gold " +
+        "stanchion ropes on both sides. Subject walks slowly with total grace and elegance, " +
+        "taking long deliberate strides. Warm golden cinematic lighting. " +
         "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Slow motion walk, Cinematic crane rise, Tracking shot from behind, " +
-        "Blue carpet reveal, Continuous strobing paparazzi flashes, Massive crowd, " +
-        "High glamour, Golden dramatic lighting]",
+        "[Blue carpet entrance, Slow deliberate walk, Cinematic crane rise, " +
+        "Tracking shot from behind, Strobing paparazzi flashes, Grand venue, " +
+        "Golden cinematic lighting, No bedroom, No indoor room]",
     };
 
     const prompt = prompts[gender] || prompts.male;
