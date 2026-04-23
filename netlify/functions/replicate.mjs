@@ -28,31 +28,37 @@ export default async (req, context) => {
     // POST — create Hailuo 2.3 prediction
     const { imageBase64, gender } = await req.json();
 
+    // Likeness preservation strategy:
+    // - No clothing changes (forces full-body reconstruction which bleeds into face)
+    // - No camera arc/rotation (model invents unseen angles, degrading likeness)
+    // - No lighting changes (relit faces drift from source)
+    // - Phase 1 is a slow subtle push-in only, keeping the face locked
+    // - All appearance details derived strictly from the first frame
     const prompts = {
       male:
-        "PHASE ONE (0-1s): Glambot close-up. The subject is wearing a sharp black tuxedo. " +
-        "The subject stares directly and confidently into the camera lens — eyes locked forward. " +
-        "The camera is extremely tight on the subject's face and chest. Background is fully " +
-        "blurred bokeh. Ultra slow motion. The camera makes a brief smooth arc sweep around " +
-        "the subject over one second, from front-facing to slight side profile. Bright warm " +
-        "frontal lighting on the subject's face. " +
+        "PHASE ONE (0-1s): Glambot close-up. The subject stares directly and confidently " +
+        "into the camera lens — eyes locked forward, strong composed expression. " +
+        "The camera is tight on the subject's face. Background is fully blurred bokeh. " +
+        "Ultra slow motion. The camera makes a very slow subtle push-in toward the subject's " +
+        "face — no rotation, no arc, no angle change. Preserve the exact lighting from the " +
+        "first frame. Do not alter the subject's face, features, or appearance in any way. " +
         "PHASE TWO (1-6s): The subject turns and walks confidently away down a glamorous " +
-        "blue carpet, black tuxedo visible from behind. The camera immediately pulls back and " +
-        "rises, following from behind to reveal the full scene. Explosive strobing paparazzi " +
-        "flash bursts erupt relentlessly from both sides — blinding white camera flashes firing " +
-        "every half second from dense crowds of photographers. Long blue carpet stretches into " +
-        "the distance. Fans packed behind gold stanchion ropes on both sides. Warm golden " +
-        "cinematic lighting. Subject walks with purpose and confidence. " +
-        "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Glambot arc, Ultra slow motion phase one, Tracking shot from behind phase two, " +
-        "Blue carpet reveal, Strobing paparazzi flashes, Black tuxedo, Shallow depth of field]",
+        "blue carpet. The camera immediately pulls back and rises, following from behind to " +
+        "reveal the full scene. Explosive strobing paparazzi flash bursts erupt relentlessly " +
+        "from both sides — blinding white camera flashes firing every half second from dense " +
+        "crowds of photographers. Long blue carpet stretches into the distance. Fans packed " +
+        "behind gold stanchion ropes on both sides. Warm golden cinematic lighting. Subject " +
+        "walks with purpose and confidence. " +
+        "Preserve the subject's exact face, features, and appearance from the first frame. " +
+        "[Ultra slow motion phase one, Subtle push-in only, Tracking shot from behind phase two, " +
+        "Blue carpet reveal, Strobing paparazzi flashes, Shallow depth of field]",
       female:
         "PHASE ONE (0-1s): Glambot close-up. The subject stares directly and confidently " +
-        "into the camera lens — eyes locked forward with a poised elegant expression. " +
-        "The camera is extremely tight on the subject's face. Background is fully blurred bokeh. " +
-        "Ultra slow motion. The camera makes a brief smooth arc sweep around the subject " +
-        "over one second, from front-facing to slight side profile. Bright warm frontal " +
-        "lighting on the subject's face. " +
+        "into the camera lens — eyes locked forward, poised elegant expression. " +
+        "The camera is tight on the subject's face. Background is fully blurred bokeh. " +
+        "Ultra slow motion. The camera makes a very slow subtle push-in toward the subject's " +
+        "face — no rotation, no arc, no angle change. Preserve the exact lighting from the " +
+        "first frame. Do not alter the subject's face, features, or appearance in any way. " +
         "PHASE TWO (1-6s): The subject turns and walks gracefully away down a glamorous " +
         "blue carpet. The camera immediately pulls back and rises, following from behind to " +
         "reveal the full scene. Explosive strobing paparazzi flash bursts erupt relentlessly " +
@@ -60,8 +66,8 @@ export default async (req, context) => {
         "crowds of photographers. Long blue carpet stretches into the distance. Fans packed " +
         "behind gold stanchion ropes on both sides. Warm golden cinematic lighting. Subject " +
         "walks with grace and elegance. " +
-        "Preserve the subject's exact face and appearance from the first frame. " +
-        "[Glambot arc, Ultra slow motion phase one, Tracking shot from behind phase two, " +
+        "Preserve the subject's exact face, features, and appearance from the first frame. " +
+        "[Ultra slow motion phase one, Subtle push-in only, Tracking shot from behind phase two, " +
         "Blue carpet reveal, Strobing paparazzi flashes, Shallow depth of field]",
     };
 
