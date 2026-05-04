@@ -53,11 +53,7 @@
   /* ── DEFAULT: portrait/kiosk stacked layout ── */
   .main{display:grid;grid-template-columns:1fr;grid-template-rows:56vh 1fr;height:calc(100vh - 62px);overflow:hidden}
 
-  /* ── LANDSCAPE DESKTOP: side-by-side only when truly wide ── */
-  @media (orientation:landscape) and (min-width:960px) and (min-height:500px) {
-    .main{grid-template-columns:1fr 360px;grid-template-rows:none;height:calc(100vh - 62px)}
-    .panel{border-left:1px solid var(--border);border-top:none;height:auto}
-  }
+  /* landscape override removed — always portrait/stacked */
 
   .camera-zone{
     position:relative;
@@ -973,7 +969,31 @@ async function exportCardPDF(){
   const prodsHTML=filteredProds.map(p=>`<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #F3F4F8"><div style="width:44px;height:44px;flex-shrink:0;background:#F7F8FC;border:1px solid #ECEEF5;display:flex;align-items:center;justify-content:center;overflow:hidden">${imgMap[p.img]?`<img src="${imgMap[p.img]}" style="width:42px;height:42px;object-fit:contain">`:`<div style="width:26px;height:26px;border-radius:50%;background:${stepColors[p.step]||'#1B2B6B'};display:flex;align-items:center;justify-content:center"><span style="font-size:9pt;font-weight:700;color:#FFFFFF">${stepNums[p.step]||''}</span></div>`}</div><div style="flex:1"><div style="font-size:5.5pt;letter-spacing:0.18em;color:#8B93B0;text-transform:uppercase;margin-bottom:1px;font-weight:600">Step ${stepNums[p.step]} · ${p.step.charAt(0)+p.step.slice(1).toLowerCase()}</div><div style="font-size:8.5pt;font-weight:700;color:#1B2B6B;margin-bottom:2px">${p.n}</div><div style="font-size:7pt;color:#6B7280;line-height:1.4">${p.d}</div></div></div>`).join('');
   const recsHTML=(d.recommendations||[]).slice(0,4).map(r=>`<div style="display:flex;gap:8px;padding:6px 8px;background:#F7F8FC;border-left:3px solid #1B2B6B;margin-bottom:5px"><span style="font-size:11pt;flex-shrink:0;line-height:1.2;width:18px;text-align:center">${r.icon||'✦'}</span><div><div style="font-size:7.5pt;font-weight:700;color:#1B2B6B;margin-bottom:1px">${r.title}</div><div style="font-size:6.5pt;color:#6B7280;line-height:1.45">${r.desc}</div></div></div>`).join('');
   const sectionHead=t=>`<div style="font-size:6pt;letter-spacing:0.28em;color:#1B2B6B;text-transform:uppercase;font-weight:700;margin-bottom:7px;padding-bottom:3px;border-bottom:1.5px solid #1B2B6B">${t}</div>`;
-  const reportHTML=`<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>@page{size:A4 portrait;margin:0}*{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{font-family:'Josefin Sans',sans-serif;background:#fff;width:210mm;min-height:297mm}.page{width:210mm;min-height:297mm;display:flex;flex-direction:column}</style></head><body><div class="page"><div style="background:#1B2B6B;padding:9mm 16mm 8mm;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0"><div><div style="font-size:6.5pt;letter-spacing:0.35em;color:rgba(255,255,255,0.4);text-transform:uppercase;font-weight:600">Personalised Skin Analysis Report</div>${name?`<div style="font-size:12pt;font-weight:300;color:#FFFFFF;margin-top:3px;letter-spacing:0.04em">${name}</div>`:''}</div><div style="text-align:right"><div style="font-size:6.5pt;letter-spacing:0.22em;color:rgba(255,255,255,0.3);text-transform:uppercase;margin-bottom:4px">Analysis Date</div><div style="font-size:9pt;color:rgba(255,255,255,0.7)">${dateStr}</div></div></div><div style="height:3px;background:linear-gradient(90deg,#C9A96E 0%,#E8D4A8 50%,rgba(201,169,110,0.1) 100%);flex-shrink:0"></div><div style="display:flex;background:#F7F8FC;border-bottom:1px solid #ECEEF5;flex-shrink:0"><div style="padding:5mm 8mm;border-right:1px solid #ECEEF5;text-align:center;min-width:48mm"><div style="font-size:6pt;letter-spacing:0.3em;color:#8B93B0;text-transform:uppercase;margin-bottom:3px;font-weight:600">Skin Age</div><div style="font-size:32pt;font-weight:700;color:#1B2B6B;line-height:1">${d.skinAge||'--'}</div><div style="font-size:7.5pt;color:#4B5563;margin-top:3px">${(d.skinAge||30)<=25?'Exceptionally youthful':(d.skinAge||30)<=35?'Healthy vitality':(d.skinAge||30)<=45?'Age appropriate':'Accelerated aging'}</div></div><div style="padding:5mm 8mm;border-right:1px solid #ECEEF5;text-align:center;min-width:48mm"><div style="font-size:6pt;letter-spacing:0.3em;color:#8B93B0;text-transform:uppercase;margin-bottom:3px;font-weight:600">Overall Score</div><div style="font-size:32pt;font-weight:700;line-height:1;color:${(d.score||72)>=70?'#1B2B6B':(d.score||72)>=45?'#D4813A':'#C0392B'}">${d.score||'--'}<span style="font-size:11pt;color:#8B93B0;font-weight:400">/100</span></div><div style="font-size:7.5pt;color:#4B5563;margin-top:3px">${d.scoreLabel||'Good'}</div></div><div style="padding:5mm 8mm;flex:1"><div style="font-size:6pt;letter-spacing:0.3em;color:#8B93B0;text-transform:uppercase;margin-bottom:5px;font-weight:600">Assessment</div><div style="font-size:8pt;color:#4B5563;line-height:1.65">${d.scoreDesc||''}</div></div></div><div style="display:flex;flex:1;padding:7mm 14mm 6mm;gap:8mm;align-items:flex-start"><div style="width:60mm;flex-shrink:0"><div style="margin-bottom:7mm">${sectionHead('Skin Metrics')}${metricsHTML}</div><div>${sectionHead('Zone Analysis')}${zonesHTML}</div></div><div style="width:58mm;flex-shrink:0"><div style="margin-bottom:7mm">${sectionHead('Concerns Detected')}${blemHTML}</div><div>${sectionHead('Your Protocol')}${prodsHTML}</div></div><div style="flex:1"><div style="margin-bottom:7mm">${sectionHead('Recommendations')}${recsHTML}</div><div style="display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid #ECEEF5;background:#F7F8FC;margin-top:auto"><img src="${QR}" style="width:18mm;height:18mm;flex-shrink:0"><div><div style="font-size:8.5pt;font-weight:700;color:#1B2B6B;margin-bottom:3px">Book your consultation</div><div style="font-size:7.5pt;color:#6B7280;line-height:1.5">Scan to speak with an iS Clinical specialist about your personalised results.</div></div></div></div></div><div style="background:#0D1538;padding:4mm 16mm;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;margin-top:auto"><div style="font-size:6pt;letter-spacing:0.2em;color:rgba(255,255,255,0.3);text-transform:uppercase">iS Clinical · AI Skin Intelligence</div><div style="font-size:6pt;letter-spacing:0.14em;color:rgba(255,255,255,0.2);text-transform:uppercase">${dateStr}${name?' · '+name:''}</div></div></div></body></html>`;
+  const reportHTML=`<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Josefin+Sans:wght@300;400;600;700&display=swap" rel="stylesheet"><style>@page{size:A4 portrait;margin:0}*{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{font-family:'Josefin Sans',sans-serif;background:#fff;width:210mm;min-height:297mm}.page{width:210mm;min-height:297mm;display:flex;flex-direction:column}</style></head><body><div class="page"><div style="background:#1B2B6B;padding:9mm 16mm 8mm;display:flex;align-items:flex-end;justify-content:space-between;flex-shrink:0"><div><div style="font-size:6.5pt;letter-spacing:0.35em;color:rgba(255,255,255,0.4);text-transform:uppercase;font-weight:600">Personalised Skin Analysis Report</div>${name?`<div style="font-size:12pt;font-weight:300;color:#FFFFFF;margin-top:3px;letter-spacing:0.04em">${name}</div>`:''}</div><div style="text-align:right"><div style="font-size:6.5pt;letter-spacing:0.22em;color:rgba(255,255,255,0.3);text-transform:uppercase;margin-bottom:4px">Analysis Date</div><div style="font-size:9pt;color:rgba(255,255,255,0.7)">${dateStr}</div></div></div><div style="height:3px;background:linear-gradient(90deg,#C9A96E 0%,#E8D4A8 50%,rgba(201,169,110,0.1) 100%);flex-shrink:0"></div><div style="display:flex;background:#F7F8FC;border-bottom:1px solid #ECEEF5;flex-shrink:0"><div style="padding:5mm 8mm;border-right:1px solid #ECEEF5;text-align:center;min-width:48mm"><div style="font-size:6pt;letter-spacing:0.3em;color:#8B93B0;text-transform:uppercase;margin-bottom:3px;font-weight:600">Skin Age</div><div style="font-size:32pt;font-weight:700;color:#1B2B6B;line-height:1">${d.skinAge||'--'}</div><div style="font-size:7.5pt;color:#4B5563;margin-top:3px">${(d.skinAge||30)<=25?'Exceptionally youthful':(d.skinAge||30)<=35?'Healthy vitality':(d.skinAge||30)<=45?'Age appropriate':'Accelerated aging'}</div></div><div style="padding:5mm 8mm;border-right:1px solid #ECEEF5;text-align:center;min-width:48mm"><div style="font-size:6pt;letter-spacing:0.3em;color:#8B93B0;text-transform:uppercase;margin-bottom:3px;font-weight:600">Overall Score</div><div style="font-size:32pt;font-weight:700;line-height:1;color:${(d.score||72)>=70?'#1B2B6B':(d.score||72)>=45?'#D4813A':'#C0392B'}">${d.score||'--'}<span style="font-size:11pt;color:#8B93B0;font-weight:400">/100</span></div><div style="font-size:7.5pt;color:#4B5563;margin-top:3px">${d.scoreLabel||'Good'}</div></div><div style="padding:5mm 8mm;flex:1"><div style="font-size:6pt;letter-spacing:0.3em;color:#8B93B0;text-transform:uppercase;margin-bottom:5px;font-weight:600">Assessment</div><div style="font-size:8pt;color:#4B5563;line-height:1.65">${d.scoreDesc||''}</div></div></div><div style="display:flex;flex:1;padding:7mm 14mm 6mm;gap:8mm;align-items:flex-start"><div style="width:60mm;flex-shrink:0"><div style="margin-bottom:7mm">${sectionHead('Skin Metrics')}${metricsHTML}</div><div>${sectionHead('Zone Analysis')}${zonesHTML}</div></div><div style="width:58mm;flex-shrink:0"><div style="margin-bottom:7mm">${sectionHead('Concerns Detected')}${blemHTML}</div><div>${sectionHead('Your Protocol')}${prodsHTML}</div></div><div style="flex:1"><div style="margin-bottom:7mm">${sectionHead('Recommendations')}${recsHTML}</div><div style="display:flex;gap:10px;align-items:center;padding:10px 12px;border:1px solid #ECEEF5;background:#F7F8FC;margin-top:auto"><img src="${QR}" style="width:18mm;height:18mm;flex-shrink:0"><div><div style="font-size:8.5pt;font-weight:700;color:#1B2B6B;margin-bottom:3px">Book your consultation</div><div style="font-size:7.5pt;color:#6B7280;line-height:1.5">Scan to speak with an iS Clinical specialist about your personalised results.</div></div></div></div></div><div style="background:#0D1538;padding:4mm 16mm;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;margin-top:auto"><div style="font-size:6pt;letter-spacing:0.2em;color:rgba(255,255,255,0.3);text-transform:uppercase">iS Clinical · AI Skin Intelligence</div><div style="font-size:6pt;letter-spacing:0.14em;color:rgba(255,255,255,0.2);text-transform:uppercase">${dateStr}${name?' · '+name:''}</div></div></div>
+<script>
+// ── FORCE STACKED LAYOUT ─────────────────────────────
+// Kiosk safety net: ensure stacked layout is ALWAYS applied.
+// Overrides any browser orientation quirks on tablet stands.
+(function(){
+  function enforceKioskLayout(){
+    const main = document.getElementById('kioskMain') || document.querySelector('.main');
+    if(!main) return;
+    // Always force stacked — camera top, panel bottom
+    main.style.gridTemplateColumns = '1fr';
+    main.style.gridTemplateRows = '56vh 1fr';
+    main.style.height = 'calc(100vh - 52px)';
+  }
+  // Run immediately and on any resize/orientation change
+  document.addEventListener('DOMContentLoaded', enforceKioskLayout);
+  window.addEventListener('resize', enforceKioskLayout);
+  window.addEventListener('orientationchange', enforceKioskLayout);
+  // Also run after short delay to catch late renders
+  setTimeout(enforceKioskLayout, 500);
+  setTimeout(enforceKioskLayout, 1500);
+})();
+</script>
+
+</body></html>`;
   showToast('OPENING REPORT · SELECT SAVE AS PDF');
   setTimeout(()=>{
     const win=window.open('','_blank','width=850,height=1100');
@@ -1193,5 +1213,29 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),3500);
 }
 </script>
+
+<script>
+// ── FORCE STACKED LAYOUT ─────────────────────────────
+// Kiosk safety net: ensure stacked layout is ALWAYS applied.
+// Overrides any browser orientation quirks on tablet stands.
+(function(){
+  function enforceKioskLayout(){
+    const main = document.getElementById('kioskMain') || document.querySelector('.main');
+    if(!main) return;
+    // Always force stacked — camera top, panel bottom
+    main.style.gridTemplateColumns = '1fr';
+    main.style.gridTemplateRows = '56vh 1fr';
+    main.style.height = 'calc(100vh - 52px)';
+  }
+  // Run immediately and on any resize/orientation change
+  document.addEventListener('DOMContentLoaded', enforceKioskLayout);
+  window.addEventListener('resize', enforceKioskLayout);
+  window.addEventListener('orientationchange', enforceKioskLayout);
+  // Also run after short delay to catch late renders
+  setTimeout(enforceKioskLayout, 500);
+  setTimeout(enforceKioskLayout, 1500);
+})();
+</script>
+
 </body>
 </html>
