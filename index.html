@@ -1,228 +1,922 @@
-/**
- * /api/send-email.js
- * Blue Carpet — Postmark email route
- *
- * POST body: { email: string, videoUrl: string }
- *
- * Flow:
- *  1. Validate inputs
- *  2. Fetch the video from the Replicate CDN URL
- *  3. Check size against Postmark's 10MB total message limit
- *     - Under limit  → attach the video directly (base64)
- *     - Over limit   → send a branded HTML email with a download link instead
- *  4. POST to https://api.postmarkapp.com/email with correct headers
- *
- * Required env vars:
- *   POSTMARK_SERVER_TOKEN   — your Postmark server API token
- *   EMAIL_FROM              — verified sender signature, e.g. "Blue Carpet <bluecarpet@yourdomain.com>"
- *
- * Drop this file into your existing /api directory alongside predict.js
- * and register the route in your server the same way as /api/predict.
- */
-
-// ── CONFIG ──────────────────────────────────────────────────────────────────
-const POSTMARK_API  = 'https://api.postmarkapp.com/email';
-const SERVER_TOKEN  = process.env.POSTMARK_SERVER_TOKEN;
-const FROM_ADDRESS  = process.env.EMAIL_FROM || 'Blue Carpet <noreply@yourdomain.com>';
-
-// Postmark's hard limit is 10 MB total *after* base64 encoding.
-// Base64 inflates by ~33 %, so a 7.5 MB video ≈ 10 MB encoded.
-// We keep headroom for HTML body + headers by capping at 7 MB raw.
-const MAX_ATTACH_BYTES = 7 * 1024 * 1024; // 7 MB raw
-
-// ── HANDLER ─────────────────────────────────────────────────────────────────
-module.exports = async function sendEmailHandler(req, res) {
-
-  // Only accept POST
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const { email, videoUrl } = req.body || {};
-
-  // ── 1. Validate inputs ────────────────────────────────────────────────────
-  if (!email || !email.includes('@')) {
-    return res.status(400).json({ error: 'Valid email address required.' });
-  }
-  if (!videoUrl || !videoUrl.startsWith('http')) {
-    return res.status(400).json({ error: 'Valid video URL required.' });
-  }
-  if (!SERVER_TOKEN) {
-    console.error('[send-email] POSTMARK_SERVER_TOKEN env var is not set.');
-    return res.status(500).json({ error: 'Email service not configured.' });
-  }
-
-  // ── 2. Fetch the video ────────────────────────────────────────────────────
-  let videoBuffer;
-  try {
-    const videoRes = await fetch(videoUrl, { method: 'GET' });
-    if (!videoRes.ok) throw new Error(`Video fetch failed: ${videoRes.status}`);
-    const arrayBuf = await videoRes.arrayBuffer();
-    videoBuffer = Buffer.from(arrayBuf);
-  } catch (err) {
-    console.error('[send-email] Could not fetch video:', err.message);
-    return res.status(502).json({ error: 'Could not retrieve video file. Please try again.' });
-  }
-
-  // ── 3. Build the Postmark payload ─────────────────────────────────────────
-  const isAttachable = videoBuffer.byteLength <= MAX_ATTACH_BYTES;
-  const videoBase64  = isAttachable ? videoBuffer.toString('base64') : null;
-
-  const htmlBody = buildHtmlEmail(email, videoUrl, isAttachable);
-  const textBody = buildTextEmail(email, videoUrl, isAttachable);
-
-  const payload = {
-    From:          FROM_ADDRESS,
-    To:            email,
-    Subject:       'Your Blue Carpet Moment — iS Clinical Future of Aesthetics 2026',
-    HtmlBody:      htmlBody,
-    TextBody:      textBody,
-    MessageStream: 'outbound',
-    Tag:           'blue-carpet-video',
-    TrackOpens:    true,
-  };
-
-  // Attach video if small enough, otherwise the email body has the download link
-  if (isAttachable && videoBase64) {
-    payload.Attachments = [
-      {
-        Name:        'blue-carpet-moment.mp4',
-        Content:     videoBase64,
-        ContentType: 'video/mp4',
-      },
-    ];
-  }
-
-  // ── 4. POST to Postmark ───────────────────────────────────────────────────
-  let pmRes;
-  try {
-    pmRes = await fetch(POSTMARK_API, {
-      method:  'POST',
-      headers: {
-        'Accept':                  'application/json',
-        'Content-Type':            'application/json',
-        'X-Postmark-Server-Token': SERVER_TOKEN,
-      },
-      body: JSON.stringify(payload),
-    });
-  } catch (err) {
-    console.error('[send-email] Postmark request failed:', err.message);
-    return res.status(502).json({ error: 'Failed to reach email service. Please try again.' });
-  }
-
-  const pmData = await pmRes.json();
-
-  // Postmark returns ErrorCode 0 for success
-  if (!pmRes.ok || pmData.ErrorCode !== 0) {
-    console.error('[send-email] Postmark error:', pmData);
-    return res.status(502).json({
-      error: pmData.Message || 'Email delivery failed. Please try again.',
-    });
-  }
-
-  console.log(`[send-email] Sent to ${email} — MessageID: ${pmData.MessageID} — attached: ${isAttachable}`);
-  return res.status(200).json({
-    success:    true,
-    messageId:  pmData.MessageID,
-    attached:   isAttachable,
-  });
-};
-
-// ── EMAIL TEMPLATES ──────────────────────────────────────────────────────────
-
-function buildHtmlEmail(email, videoUrl, attached) {
-  const videoBlock = attached
-    ? `<p style="font-size:15px;color:#9db8e8;font-style:italic;margin:0 0 28px">
-        Your video is attached to this email as <strong style="color:#dfe7f5">blue-carpet-moment.mp4</strong>.
-       </p>`
-    : `<p style="font-size:15px;color:#9db8e8;font-style:italic;margin:0 0 20px">
-        Your video is ready to download — tap the button below.
-       </p>
-       <a href="${videoUrl}" download="blue-carpet-moment.mp4"
-         style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#0b1440,#2440b8);
-                color:#dfe7f5;font-size:13px;letter-spacing:0.3em;text-transform:uppercase;
-                text-decoration:none;border-radius:2px;border:1px solid rgba(201,169,106,0.5);
-                margin-bottom:28px">
-         Download Your Moment
-       </a>`;
-
-  return `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Your Blue Carpet Moment</title></head>
-<body style="margin:0;padding:0;background:#02040c;font-family:Georgia,serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#02040c;padding:40px 20px;">
-    <tr><td align="center">
-      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Blue Carpet — AI Experience</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,900;1,400;1,500;1,600;1,900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 
-        <!-- Header -->
-        <tr><td align="center" style="padding-bottom:8px;">
-          <p style="margin:0;font-size:10px;letter-spacing:0.45em;text-transform:uppercase;color:rgba(230,207,156,0.6);">
-            iS Clinical · Future of Aesthetics 2026
-          </p>
-        </td></tr>
-        <tr><td align="center" style="padding-bottom:6px;">
-          <h1 style="margin:0;font-size:42px;font-style:italic;font-weight:900;letter-spacing:-0.02em;line-height:1;
-                     background:linear-gradient(150deg,#7e93bf,#dfe7f5,#9db8e8);
-                     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
-                     color:#dfe7f5;">
-            Blue Carpet
-          </h1>
-        </td></tr>
+:root {
+  --black:    #02040c;
+  --deep:     #050a1c;
+  --velvet:   #0b143a;
+  --royal:    #16277a;
+  --sapphire: #2440b8;
+  --azure:    #4d6fd4;
+  --ice:      #9db8e8;
+  --pearl:    #dfe7f5;
+  --pearl-l:  #f2f5fc;
+  --gold:     #c9a96a;
+  --gold-l:   #e6cf9c;
+}
 
-        <!-- Gold rule -->
-        <tr><td align="center" style="padding:12px 0 24px;">
-          <table cellpadding="0" cellspacing="0"><tr>
-            <td width="54" height="1" style="background:linear-gradient(90deg,transparent,rgba(201,169,106,0.5));"></td>
-            <td width="8" height="8" style="background:#e6cf9c;transform:rotate(45deg);margin:0 8px;display:block;"></td>
-            <td width="54" height="1" style="background:linear-gradient(-90deg,transparent,rgba(201,169,106,0.5));"></td>
-          </tr></table>
-        </td></tr>
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  background:var(--black);
+  color:#fff;
+  font-family:'Cormorant Garamond', serif;
+}
 
-        <!-- Body -->
-        <tr><td align="center"
-          style="background:rgba(11,20,58,0.4);border:1px solid rgba(201,169,106,0.18);
-                 border-radius:3px;padding:36px 32px;">
-          <p style="margin:0 0 10px;font-size:10px;letter-spacing:0.38em;text-transform:uppercase;color:rgba(157,184,232,0.5);">
-            Your moment is ready
-          </p>
-          <p style="margin:0 0 22px;font-size:20px;font-style:italic;color:#dfe7f5;line-height:1.4;">
-            You stepped onto the blue carpet.<br>Here's the cinematic result.
-          </p>
-          ${videoBlock}
-          <p style="margin:28px 0 0;font-size:12px;color:rgba(157,184,232,0.4);font-style:italic;line-height:1.7;">
-            Generated exclusively at the iS Clinical Future of Aesthetics 2026 event.<br>
-            Share your moment and tag us.
-          </p>
-        </td></tr>
+/* ── PERSISTENT ATMOSPHERE ── */
+.scene-bg {
+  position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 70% 50% at 50% -5%, rgba(36,64,184,0.22) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 80% at 0% 60%, rgba(2,4,12,0.98) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 80% at 100% 60%, rgba(2,4,12,0.98) 0%, transparent 55%),
+    linear-gradient(180deg, #02040c 0%, #04081a 45%, #02030a 100%);
+}
 
-        <!-- Footer -->
-        <tr><td align="center" style="padding-top:28px;">
-          <p style="margin:0;font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(157,184,232,0.25);">
-            iS Clinical Skincare South Africa · sternlaser.co.za
-          </p>
-        </td></tr>
+/* Overhead spotlight cone — the theatrical centrepiece */
+.spotlight {
+  position:fixed; top:-12%; left:50%; transform:translateX(-50%);
+  width:135%; height:115%; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(ellipse 38% 60% at 50% 0%, rgba(157,184,232,0.16) 0%, rgba(77,111,212,0.07) 35%, transparent 68%);
+  -webkit-mask:linear-gradient(180deg, #000 0%, #000 55%, transparent 92%);
+  mask:linear-gradient(180deg, #000 0%, #000 55%, transparent 92%);
+  animation:spotBreathe 9s ease-in-out infinite;
+}
+@keyframes spotBreathe { 0%,100%{opacity:.8} 50%{opacity:1} }
 
-      </table>
-    </td></tr>
-  </table>
+/* Carpet pooling under the spotlight */
+.carpet-runner {
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:60%; height:48%; z-index:0; pointer-events:none;
+  background:linear-gradient(180deg, transparent 0%, rgba(11,20,58,0.4) 35%, rgba(36,64,184,0.16) 65%, rgba(11,20,58,0.6) 100%);
+  clip-path:polygon(30% 0%, 70% 0%, 100% 100%, 0% 100%);
+}
+.carpet-sheen {
+  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
+  width:24%; height:44%; z-index:0; pointer-events:none;
+  background:linear-gradient(180deg, transparent 0%, rgba(157,184,232,0.06) 60%, rgba(157,184,232,0.1) 100%);
+  clip-path:polygon(38% 0%, 62% 0%, 100% 100%, 0% 100%);
+}
+
+.vign { position:fixed; inset:0; z-index:1; pointer-events:none;
+  background:radial-gradient(ellipse 95% 88% at 50% 42%, transparent 52%, rgba(2,3,8,0.92) 100%); }
+.grain { position:fixed; inset:0; z-index:2; pointer-events:none; opacity:0.025;
+  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size:170px; }
+
+/* Drifting light motes — slower, fewer, softer than before */
+.motes { position:fixed; inset:0; z-index:1; pointer-events:none; }
+.mote { position:absolute; border-radius:50%;
+  background:radial-gradient(circle, var(--pearl-l) 0%, var(--ice) 50%, transparent 100%);
+  opacity:0; animation:moteRise linear infinite;
+  box-shadow:0 0 6px rgba(157,184,232,0.4); }
+@keyframes moteRise {
+  0%{opacity:0;transform:translateY(40px) scale(.3)}
+  12%{opacity:.55}
+  88%{opacity:.12}
+  100%{opacity:0;transform:translateY(-105vh) scale(.7)}
+}
+
+/* Refined badge */
+.live-badge {
+  position:fixed; top:18px; right:18px; z-index:300;
+  display:flex; align-items:center; gap:7px;
+  background:rgba(2,4,12,0.7); border:1px solid rgba(201,169,106,0.22);
+  padding:6px 13px; border-radius:2px;
+  font-family:'Cormorant Garamond',serif; font-size:10px; font-weight:500;
+  letter-spacing:0.32em; text-transform:uppercase;
+  color:rgba(230,207,156,0.7); backdrop-filter:blur(14px);
+}
+.live-dot { width:4px; height:4px; border-radius:50%; background:var(--gold-l);
+  box-shadow:0 0 7px var(--gold); animation:livePulse 2.4s infinite; }
+@keyframes livePulse { 0%,100%{box-shadow:0 0 0 0 rgba(201,169,106,.5)} 50%{box-shadow:0 0 0 5px rgba(201,169,106,0)} }
+
+/* ══════════════════════════════════════
+   SCENE SYSTEM
+══════════════════════════════════════ */
+.scene {
+  position:fixed; inset:0; z-index:10;
+  display:flex; flex-direction:column; align-items:center;
+  opacity:0; pointer-events:none;
+  transition:opacity 0.8s ease;
+  overflow-y:auto; overflow-x:hidden;
+}
+.scene.active { opacity:1; pointer-events:all; }
+
+/* Shared editorial rule */
+.rule { display:flex; align-items:center; justify-content:center; gap:14px; }
+.rule .ln { width:54px; height:1px; }
+.rule .ln.a { background:linear-gradient(90deg, transparent, rgba(201,169,106,.5)); }
+.rule .ln.b { background:linear-gradient(-90deg, transparent, rgba(201,169,106,.5)); }
+.rule .dot { width:4px; height:4px; background:var(--gold-l); transform:rotate(45deg); box-shadow:0 0 7px var(--gold); }
+
+/* ══════════════════════════════════════
+   SCENE 0 — CURTAIN
+══════════════════════════════════════ */
+#scene-curtain { z-index:100; overflow:hidden; }
+.curtain-wrap { position:absolute; inset:0; display:flex; }
+
+/* ── PAPARAZZI FLASH SYSTEM ── */
+.flash-field { position:absolute; inset:0; z-index:8; pointer-events:none; }
+/* individual pop of light — small bright core, soft falloff */
+.flash {
+  position:absolute; width:18px; height:18px; border-radius:50%;
+  background:radial-gradient(circle, #ffffff 0%, #f0f4ff 30%, rgba(157,184,232,0.5) 55%, transparent 100%);
+  opacity:0; transform:scale(0.2);
+  will-change:opacity, transform;
+}
+.flash.pop { animation:flashPop 0.42s cubic-bezier(0.15,0.85,0.3,1) forwards; }
+@keyframes flashPop {
+  0%   { opacity:0;   transform:scale(0.2); }
+  9%   { opacity:1;   transform:scale(1.5); }
+  22%  { opacity:0.85;transform:scale(1.1); }
+  100% { opacity:0;   transform:scale(0.6); }
+}
+/* full-screen white kiss when a burst is dense — sells the "wall of cameras" */
+.flash-bloom { position:absolute; inset:0; z-index:9; background:#fff; opacity:0; pointer-events:none; }
+.flash-bloom.kiss { animation:bloomKiss 0.5s ease-out forwards; }
+@keyframes bloomKiss { 0%{opacity:0} 14%{opacity:0.38} 100%{opacity:0} }
+.curtain-panel {
+  position:relative; width:50%; height:100%; overflow:hidden;
+  transition:transform 2.2s cubic-bezier(0.72,0,0.28,1);
+}
+.curtain-panel.left.open  { transform:translateX(-100%); }
+.curtain-panel.right.open { transform:translateX(100%); }
+.curtain-fabric { position:absolute; inset:0; }
+.curtain-panel.left .curtain-fabric {
+  background:
+    repeating-linear-gradient(180deg, transparent 0, transparent 26px, rgba(255,255,255,0.01) 26px, rgba(255,255,255,0.01) 28px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,.42) 0, rgba(0,0,0,0) 14px, rgba(0,0,0,0) 30px, rgba(0,0,0,.32) 44px, rgba(0,0,0,0) 58px, rgba(0,0,0,0) 80px, rgba(0,0,0,.38) 96px, rgba(0,0,0,0) 110px),
+    linear-gradient(90deg, #030820 0%, #0d1c54 28%, #061338 52%, #112668 72%, #050f30 88%, #030820 100%);
+}
+.curtain-panel.right .curtain-fabric {
+  background:
+    repeating-linear-gradient(180deg, transparent 0, transparent 26px, rgba(255,255,255,0.01) 26px, rgba(255,255,255,0.01) 28px),
+    repeating-linear-gradient(90deg, rgba(0,0,0,0) 0, rgba(0,0,0,.38) 14px, rgba(0,0,0,0) 30px, rgba(0,0,0,0) 52px, rgba(0,0,0,.32) 66px, rgba(0,0,0,0) 80px, rgba(0,0,0,0) 102px, rgba(0,0,0,.42) 116px),
+    linear-gradient(90deg, #030820 0%, #050f30 12%, #112668 28%, #061338 52%, #0d1c54 72%, #030820 100%);
+}
+.curtain-panel.left::after  { content:''; position:absolute; top:0; right:0; bottom:0; width:90px; background:linear-gradient(90deg, transparent, rgba(157,184,232,0.08) 55%, rgba(223,231,245,0.05)); pointer-events:none; }
+.curtain-panel.right::after { content:''; position:absolute; top:0; left:0; bottom:0; width:90px; background:linear-gradient(-90deg, transparent, rgba(157,184,232,0.08) 55%, rgba(223,231,245,0.05)); pointer-events:none; }
+.c-braid { position:absolute; top:0; bottom:0; width:5px; z-index:2; }
+.curtain-panel.left  .c-braid { right:0; background:linear-gradient(180deg,#6e5424,#c9a96a 15%,#e6cf9c 50%,#c9a96a 85%,#6e5424); box-shadow:0 0 12px rgba(201,169,106,.3); }
+.curtain-panel.right .c-braid { left:0;  background:linear-gradient(180deg,#6e5424,#c9a96a 15%,#e6cf9c 50%,#c9a96a 85%,#6e5424); box-shadow:0 0 12px rgba(201,169,106,.3); }
+
+.curtain-stage {
+  position:absolute; inset:0; z-index:5;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  pointer-events:none; gap:14px; padding:0 28px;
+}
+.c-eye {
+  font-family:'Cormorant Garamond',serif; font-size:12px; font-weight:500;
+  letter-spacing:.5em; text-transform:uppercase; color:rgba(230,207,156,.62);
+  opacity:0; animation:fadeUp 1.2s .3s ease forwards;
+}
+.c-title {
+  font-family:'Playfair Display',serif;
+  font-size:clamp(54px,16vw,118px);
+  font-weight:900; font-style:italic;
+  line-height:0.84; letter-spacing:-0.025em; text-align:center;
+  background:linear-gradient(165deg, #7e93bf 0%, var(--pearl) 26%, #fff 46%, var(--ice) 64%, #8a9ec4 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 0 50px rgba(36,64,184,.45));
+  opacity:0; animation:fadeScale 1.8s .6s cubic-bezier(0.2,0.8,0.2,1) forwards;
+}
+.c-rule { opacity:0; animation:fadeUp 1s 1.3s ease forwards; }
+.c-sub {
+  font-family:'Cormorant Garamond',serif; font-size:14px; font-weight:400; font-style:italic;
+  letter-spacing:.22em; color:rgba(157,184,232,.72);
+  opacity:0; animation:fadeUp 1s 1.5s ease forwards;
+}
+.c-cta {
+  margin-top:26px; pointer-events:all; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; gap:9px;
+  opacity:0; animation:fadeUp 1.1s 2.2s ease forwards;
+}
+.c-cta-txt {
+  font-family:'Cormorant Garamond',serif; font-size:12px; font-weight:600;
+  letter-spacing:.42em; text-transform:uppercase; color:var(--gold-l);
+}
+.c-cta-line {
+  width:1px; height:30px;
+  background:linear-gradient(180deg, var(--gold-l), transparent);
+  animation:ctaDrift 2.6s ease-in-out infinite;
+}
+@keyframes ctaDrift { 0%,100%{opacity:.4;transform:scaleY(.7)} 50%{opacity:1;transform:scaleY(1)} }
+@keyframes fadeScale { from{opacity:0;transform:scale(.9)} to{opacity:1;transform:scale(1)} }
+@keyframes fadeUp { from{opacity:0;transform:translateY(14px)} to{opacity:1;transform:translateY(0)} }
+
+/* ══════════════════════════════════════
+   SCENE 1 — STAGE  (the capture scene — frame is the hero)
+══════════════════════════════════════ */
+#scene-main { justify-content:flex-start; padding:0 0 28px; }
+
+/* Compact masthead — gives the frame room to dominate */
+.masthead { width:100%; text-align:center; padding:20px 24px 0; flex-shrink:0; }
+.mast-eye {
+  font-family:'Cormorant Garamond',serif; font-size:10px; font-weight:500;
+  letter-spacing:.42em; text-transform:uppercase; color:rgba(230,207,156,.55);
+  display:block; margin-bottom:5px;
+}
+.mast-ttl {
+  font-family:'Playfair Display',serif; font-size:clamp(34px,9vw,52px);
+  font-weight:900; font-style:italic; line-height:.9; letter-spacing:-.02em; display:block;
+  background:linear-gradient(165deg,#7e93bf 0%,var(--pearl) 28%,#fff 48%,var(--ice) 66%,#8a9ec4 100%);
+  -webkit-background-clip:text; background-clip:text; color:transparent;
+  filter:drop-shadow(0 2px 30px rgba(36,64,184,.3));
+}
+
+/* THE FRAME — portrait, large, the unmistakable hero */
+.frame-stage {
+  position:relative; width:100%; max-width:430px;
+  margin:14px auto 0; padding:0 22px;
+  flex:1; display:flex; align-items:center; min-height:0;
+}
+.f-border {
+  position:relative; width:100%; padding:2px; border-radius:3px;
+  background:linear-gradient(150deg, rgba(201,169,106,.7) 0%, rgba(157,184,232,.35) 30%, rgba(223,231,245,.5) 55%, rgba(201,169,106,.7) 100%);
+  box-shadow:
+    0 0 50px rgba(36,64,184,.28),
+    0 0 110px rgba(36,64,184,.12),
+    0 28px 60px rgba(0,0,0,.7);
+}
+.f-inner {
+  position:relative; width:100%; aspect-ratio:3/4;
+  overflow:hidden; background:#03060f; border-radius:2px;
+}
+.f-inner::after {
+  content:''; position:absolute; inset:0; z-index:6; pointer-events:none;
+  background:radial-gradient(ellipse 78% 82% at 50% 42%, transparent 54%, rgba(2,3,8,.62) 100%);
+}
+/* Slim corner ticks — refined, not "viewfinder-busy" */
+.fcm { position:absolute; width:16px; height:16px; z-index:10; pointer-events:none; }
+.fcm::before,.fcm::after { content:''; position:absolute; background:var(--gold-l); box-shadow:0 0 6px rgba(201,169,106,.6); }
+.fcm::before { width:100%; height:1px; top:0; left:0; }
+.fcm::after  { width:1px; height:100%; top:0; left:0; }
+.fcm-tl{top:5px;left:5px} .fcm-tr{top:5px;right:5px;transform:scaleX(-1)}
+.fcm-bl{bottom:5px;left:5px;transform:scaleY(-1)} .fcm-br{bottom:5px;right:5px;transform:scale(-1)}
+
+.cam-ph {
+  position:absolute; inset:0; z-index:4;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:18px;
+  cursor:pointer;
+  background:radial-gradient(ellipse 60% 50% at 50% 45%, rgba(36,64,184,.1) 0%, transparent 70%);
+  transition:background .4s;
+}
+.cam-ph:hover:not(.off) { background:radial-gradient(ellipse 60% 50% at 50% 45%, rgba(36,64,184,.18) 0%, transparent 70%); }
+.cam-ph.off { pointer-events:none; }
+.cam-ret { position:relative; width:78px; height:78px; }
+.cam-ret-ring { position:absolute; inset:0; border-radius:50%; border:1px solid rgba(201,169,106,.28); }
+.cam-ret-ring::before { content:''; position:absolute; inset:-13px; border-radius:50%; border:1px dashed rgba(157,184,232,.12); animation:spinSlow 32s linear infinite; }
+@keyframes spinSlow { to{transform:rotate(360deg)} }
+.cam-ret svg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:28px; height:28px; color:rgba(201,169,106,.55); }
+.cam-ph p { font-family:'Cormorant Garamond',serif; font-size:15px; font-weight:500; letter-spacing:.16em; text-transform:uppercase; color:rgba(223,231,245,.55); }
+.cam-hint { font-size:12px!important; font-weight:400!important; font-style:italic; letter-spacing:.04em!important; text-transform:none!important; color:rgba(157,184,232,.4)!important; }
+
+#fguide { position:absolute; inset:0; z-index:7; pointer-events:none; display:none; align-items:center; justify-content:center; }
+#fguide.on { display:flex; }
+.bshape { position:relative; width:42%; height:74%; border:1px dashed rgba(201,169,106,.4); border-radius:60px 60px 28px 28px; }
+.bshape::before { content:''; position:absolute; top:-15%; left:50%; transform:translateX(-50%); width:42%; aspect-ratio:1; border:1px dashed rgba(201,169,106,.4); border-radius:50%; }
+.fhint { position:absolute; left:50%; transform:translateX(-50%); font-family:'Cormorant Garamond',serif; font-size:11px; font-weight:500; letter-spacing:.1em; text-transform:uppercase; color:var(--gold-l); background:rgba(2,4,12,.82); padding:5px 13px; border-radius:2px; white-space:nowrap; border:1px solid rgba(201,169,106,.2); }
+.fhint.t{top:14px} .fhint.b{bottom:14px}
+
+#video-el      { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none; z-index:2; }
+#photo-preview { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; z-index:3; }
+
+#cdown { position:absolute; inset:0; z-index:11; display:flex; align-items:center; justify-content:center; background:rgba(2,4,12,.6); opacity:0; pointer-events:none; transition:opacity .35s; }
+#cdown.on { opacity:1; }
+.cnum { font-family:'Playfair Display',serif; font-size:140px; font-weight:900; font-style:italic; background:linear-gradient(150deg,var(--pearl-l),var(--ice),var(--gold-l)); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1; filter:drop-shadow(0 0 60px rgba(36,64,184,.6)); animation:cPulse 1s cubic-bezier(0.2,0.7,0.3,1); }
+@keyframes cPulse { 0%{transform:scale(1.9);opacity:0} 22%{transform:scale(1);opacity:1} 82%{transform:scale(.96);opacity:1} 100%{transform:scale(.88);opacity:0} }
+#flash-overlay { position:absolute; inset:0; background:white; z-index:20; opacity:0; pointer-events:none; }
+#flash-overlay.on { animation:flashOut .45s ease-out forwards; }
+@keyframes flashOut { 0%{opacity:1} 100%{opacity:0} }
+
+/* Gender — slim inline strip, NOT competing with the frame */
+.look-row {
+  display:flex; align-items:center; justify-content:center; gap:0;
+  margin:16px auto 0; flex-shrink:0;
+  border:1px solid rgba(201,169,106,.22); border-radius:2px;
+  background:rgba(5,10,28,.6); overflow:hidden;
+}
+.look-lbl {
+  font-family:'Cormorant Garamond',serif; font-size:11px; font-weight:500; font-style:italic;
+  letter-spacing:.22em; text-transform:uppercase; color:rgba(157,184,232,.5);
+  padding:0 16px; white-space:nowrap;
+}
+.g-btn { position:relative; background:transparent; border:none; border-left:1px solid rgba(201,169,106,.16); cursor:pointer; outline:none; padding:13px 26px; transition:background .3s; }
+.g-btn span { font-family:'Cormorant Garamond',serif; font-size:14px; font-weight:600; letter-spacing:.26em; text-transform:uppercase; color:rgba(223,231,245,.5); transition:color .3s; }
+.g-btn:hover span { color:var(--pearl-l); }
+.g-btn.sel { background:rgba(36,64,184,.22); }
+.g-btn.sel span { color:var(--gold-l); }
+.g-btn.sel::after { content:''; position:absolute; bottom:6px; left:50%; transform:translateX(-50%); width:22px; height:1px; background:var(--gold-l); box-shadow:0 0 6px var(--gold); }
+
+/* Action area — single confident button */
+.action-row { display:flex; flex-direction:column; align-items:center; gap:12px; margin-top:18px; width:100%; max-width:380px; padding:0 22px; flex-shrink:0; }
+.shimmer-line { width:120px; height:1px; background:linear-gradient(90deg,transparent,var(--gold-l),transparent); background-size:200% 100%; animation:shimmer 2.6s infinite; opacity:0; transition:opacity .5s; }
+.shimmer-line.on { opacity:1; }
+@keyframes shimmer { 0%{background-position:-100% 0} 100%{background-position:200% 0} }
+
+.btn-cap { width:100%; height:58px; position:relative; background:transparent; border:none; cursor:pointer; outline:none; overflow:hidden; border-radius:2px; transition:transform .25s; }
+.btn-cap:hover:not(:disabled) { transform:translateY(-1px); }
+.bc-bg { position:absolute; inset:0; border-radius:2px; background:linear-gradient(135deg,#0b1440 0%,#2440b8 50%,#0b1440 100%); background-size:220%; animation:btnSh 4.5s infinite; }
+@keyframes btnSh { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+.bc-bd { position:absolute; inset:0; border-radius:2px; padding:1px; background:linear-gradient(135deg,rgba(201,169,106,.85),rgba(157,184,232,.4),rgba(230,207,156,.7)); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; }
+.bc-lbl { position:relative; z-index:1; font-family:'Cormorant Garamond',serif; font-size:14px; font-weight:600; letter-spacing:.38em; text-transform:uppercase; color:var(--pearl-l); }
+.btn-cap:disabled { opacity:.3; cursor:not-allowed; }
+.btn-cap:disabled .bc-bg { animation:none; }
+
+.btn-ret { background:transparent; border:none; cursor:pointer; font-family:'Cormorant Garamond',serif; font-size:12px; font-weight:500; font-style:italic; letter-spacing:.2em; text-transform:uppercase; color:rgba(157,184,232,.4); padding:6px 18px; border-bottom:1px solid rgba(157,184,232,.12); transition:all .3s; }
+.btn-ret:hover:not(:disabled) { color:var(--gold-l); border-bottom-color:rgba(201,169,106,.45); }
+.btn-ret:disabled { opacity:.2; cursor:not-allowed; }
+
+/* ══════════════════════════════════════
+   SCENE 2 — PROCESSING
+══════════════════════════════════════ */
+#scene-processing { justify-content:center; align-items:center; }
+.proc-wrap { display:flex; flex-direction:column; align-items:center; text-align:center; padding:40px 32px; max-width:400px; width:100%; }
+.proc-rings { position:relative; width:210px; height:210px; flex-shrink:0; }
+.p-ring { position:absolute; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); border:1px solid transparent; }
+.p-ring-1 { width:210px; height:210px; border-color:rgba(36,64,184,.22); animation:rPulse 3.4s ease-in-out infinite; }
+.p-ring-2 { width:162px; height:162px; border-color:rgba(157,184,232,.3); animation:rPulse 3.4s .6s ease-in-out infinite; }
+.p-ring-3 { width:114px; height:114px; border-color:rgba(201,169,106,.3); animation:rPulse 3.4s 1.2s ease-in-out infinite; }
+.p-spin { position:absolute; width:210px; height:210px; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); border:1.5px solid transparent; border-top-color:var(--gold-l); border-right-color:rgba(201,169,106,.28); animation:pSpin 2.6s linear infinite; box-shadow:0 0 14px rgba(201,169,106,.15); }
+@keyframes rPulse { 0%,100%{opacity:.35;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.9;transform:translate(-50%,-50%) scale(1.05)} }
+@keyframes pSpin { to{transform:translate(-50%,-50%) rotate(360deg)} }
+.p-thumb { position:absolute; width:84px; height:84px; top:50%; left:50%; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:1.5px solid rgba(201,169,106,.35); box-shadow:0 0 26px rgba(36,64,184,.3); }
+.p-thumb img { width:100%; height:100%; object-fit:cover; }
+.p-brk { position:absolute; width:15px; height:15px; }
+.p-brk::before,.p-brk::after { content:''; position:absolute; background:rgba(201,169,106,.5); }
+.p-brk::before{width:100%;height:1px;top:0;left:0} .p-brk::after{width:1px;height:100%;top:0;left:0}
+.p-brk.tl{top:0;left:0} .p-brk.tr{top:0;right:0;transform:scaleX(-1)}
+.p-brk.bl{bottom:0;left:0;transform:scaleY(-1)} .p-brk.br{bottom:0;right:0;transform:scale(-1)}
+.p-title { font-family:'Playfair Display',serif; font-style:italic; font-weight:700; font-size:clamp(24px,6.5vw,34px); letter-spacing:-.01em; margin-top:34px; background:linear-gradient(150deg,#7e93bf,var(--pearl-l),var(--gold-l)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.p-rule { margin-top:14px; }
+.p-status { font-family:'Cormorant Garamond',serif; font-size:17px; font-style:italic; color:rgba(223,231,245,.62); margin-top:18px; min-height:24px; transition:opacity .5s; }
+.p-dots { display:flex; gap:9px; margin-top:20px; }
+.p-dot { width:5px; height:5px; border-radius:50%; background:var(--gold-l); animation:dotPulse 1.5s infinite; }
+.p-dot:nth-child(2){animation-delay:.25s} .p-dot:nth-child(3){animation-delay:.5s}
+@keyframes dotPulse { 0%,80%,100%{opacity:.16;transform:scale(.6)} 40%{opacity:1;transform:scale(1.4)} }
+.p-scan { width:220px; height:1px; margin-top:28px; position:relative; overflow:hidden; background:rgba(36,64,184,.12); }
+.p-scan-b { position:absolute; top:0; left:-60%; width:60%; height:100%; background:linear-gradient(90deg,transparent,var(--gold-l),transparent); animation:scanMove 2.4s ease-in-out infinite; }
+@keyframes scanMove { 0%{left:-60%} 100%{left:160%} }
+.p-error { display:none; margin-top:20px; padding:14px 18px; background:rgba(220,70,70,.07); border:1px solid rgba(220,70,70,.22); border-radius:2px; font-family:'Cormorant Garamond',serif; font-size:14px; font-style:italic; color:#e88; letter-spacing:.02em; line-height:1.6; max-width:330px; text-align:left; }
+.btn-p-retry { display:none; margin-top:15px; background:transparent; border:1px solid rgba(201,169,106,.3); border-radius:2px; padding:11px 26px; cursor:pointer; font-family:'Cormorant Garamond',serif; font-size:12px; font-weight:600; letter-spacing:.28em; text-transform:uppercase; color:rgba(201,169,106,.7); transition:all .3s; }
+.btn-p-retry:hover { border-color:rgba(201,169,106,.65); color:var(--gold-l); }
+
+/* ══════════════════════════════════════
+   SCENE 3 — RESULT
+══════════════════════════════════════ */
+#scene-result { justify-content:center; align-items:center; }
+.res-wrap { display:flex; flex-direction:column; align-items:center; width:100%; max-width:480px; padding:24px 22px 44px; }
+.res-eye { font-family:'Cormorant Garamond',serif; font-size:10px; font-weight:500; letter-spacing:.42em; text-transform:uppercase; color:rgba(230,207,156,.55); margin-bottom:8px; text-align:center; }
+.res-ttl { font-family:'Playfair Display',serif; font-style:italic; font-weight:900; font-size:clamp(30px,8.5vw,52px); letter-spacing:-.01em; text-align:center; line-height:.9; background:linear-gradient(150deg,#7e93bf,var(--pearl-l),var(--ice)); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 2px 26px rgba(36,64,184,.22)); }
+.res-rule { margin:14px 0 20px; }
+.res-vid-wrap { position:relative; width:100%; border-radius:3px; overflow:hidden; border:2px solid transparent; background:linear-gradient(150deg,rgba(201,169,106,.6),rgba(157,184,232,.3),rgba(201,169,106,.6)); padding:2px; box-shadow:0 0 60px rgba(36,64,184,.2), 0 24px 60px rgba(0,0,0,.75); }
+.res-vid-inner { position:relative; border-radius:2px; overflow:hidden; background:#000; }
+.res-topbar { position:absolute; top:0; left:0; right:0; z-index:5; display:flex; align-items:center; justify-content:space-between; padding:11px 15px; background:linear-gradient(180deg,rgba(2,4,12,.85) 0%,transparent 100%); pointer-events:none; }
+.res-bar-lbl { font-family:'Cormorant Garamond',serif; font-size:11px; font-weight:500; font-style:italic; letter-spacing:.16em; text-transform:uppercase; color:rgba(223,231,245,.6); }
+.res-ready { display:flex; align-items:center; gap:6px; font-family:'Cormorant Garamond',serif; font-size:11px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--gold-l); }
+.r-dot { width:4px; height:4px; border-radius:50%; background:var(--gold-l); animation:dotPulse 1.7s infinite; }
+#result-video { width:100%; display:block; background:#000; }
+.res-actions { display:flex; gap:11px; margin-top:16px; width:100%; }
+.btn-save { flex:1; height:54px; border-radius:2px; border:1px solid rgba(201,169,106,.4); background:linear-gradient(135deg,#0b1440,#2440b8,#0b1440); background-size:220%; animation:btnSh 5s infinite; color:var(--pearl-l); font-family:'Cormorant Garamond',serif; font-size:13px; font-weight:600; letter-spacing:.3em; text-transform:uppercase; display:flex; align-items:center; justify-content:center; gap:9px; text-decoration:none; cursor:pointer; transition:all .3s; box-shadow:0 4px 24px rgba(36,64,184,.25); }
+.btn-save:hover { box-shadow:0 8px 38px rgba(36,64,184,.45); transform:translateY(-1px); }
+.btn-again { height:54px; padding:0 20px; border-radius:2px; border:1px solid rgba(157,184,232,.2); background:transparent; color:rgba(157,184,232,.45); font-family:'Cormorant Garamond',serif; font-size:12px; font-weight:500; font-style:italic; letter-spacing:.16em; text-transform:uppercase; cursor:pointer; white-space:nowrap; transition:all .3s; }
+.btn-again:hover { border-color:rgba(201,169,106,.5); color:var(--gold-l); }
+.res-hint { margin-top:20px; text-align:center; font-family:'Cormorant Garamond',serif; font-size:12px; font-weight:400; font-style:italic; letter-spacing:.14em; text-transform:uppercase; color:rgba(157,184,232,.3); }
+
+#steps,#step1,#step2,#step3{display:none}
+
+/* ══════════════════════════════════════
+   SCENE 4 — EMAIL COLLECTION
+══════════════════════════════════════ */
+#scene-email { justify-content:center; align-items:center; }
+.email-wrap {
+  display:flex; flex-direction:column; align-items:center;
+  width:100%; max-width:420px; padding:36px 28px 48px; text-align:center;
+}
+.email-eye { font-family:'Cormorant Garamond',serif; font-size:10px; font-weight:500; letter-spacing:.42em; text-transform:uppercase; color:rgba(230,207,156,.55); margin-bottom:9px; }
+.email-ttl { font-family:'Playfair Display',serif; font-style:italic; font-weight:900; font-size:clamp(26px,7vw,42px); letter-spacing:-.01em; line-height:.9; background:linear-gradient(150deg,#7e93bf,var(--pearl-l),var(--ice)); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.email-rule { margin:15px 0 18px; }
+.email-sub { font-family:'Cormorant Garamond',serif; font-size:16px; font-style:italic; color:rgba(157,184,232,.65); line-height:1.55; margin-bottom:28px; }
+
+/* Thumbnail preview */
+.email-thumb-wrap { position:relative; width:86px; height:86px; margin:0 auto 24px; }
+.email-thumb-wrap img { width:100%; height:100%; border-radius:50%; object-fit:cover; border:2px solid rgba(201,169,106,.4); box-shadow:0 0 24px rgba(36,64,184,.3); }
+.email-thumb-ring { position:absolute; inset:-6px; border-radius:50%; border:1px solid rgba(201,169,106,.2); animation:rPulse 3s ease-in-out infinite; }
+
+/* Input */
+.email-field-wrap { position:relative; width:100%; margin-bottom:13px; }
+.email-field-wrap::before { content:''; position:absolute; inset:0; border-radius:2px; padding:1px; background:linear-gradient(135deg,rgba(201,169,106,.55),rgba(157,184,232,.25),rgba(201,169,106,.5)); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none; }
+#email-input, #email-name-input {
+  width:100%; height:54px; background:rgba(5,10,28,.75);
+  border:none; outline:none; border-radius:2px;
+  padding:0 18px; color:var(--pearl-l);
+  font-family:'Cormorant Garamond',serif; font-size:17px; letter-spacing:.04em;
+  transition:background .3s;
+}
+#email-input::placeholder, #email-name-input::placeholder { color:rgba(157,184,232,.3); font-style:italic; }
+#email-input:focus, #email-name-input:focus { background:rgba(11,20,58,.8); }
+
+.btn-send-email { width:100%; height:54px; position:relative; background:transparent; border:none; cursor:pointer; outline:none; overflow:hidden; border-radius:2px; transition:transform .25s; }
+.btn-send-email:hover:not(:disabled) { transform:translateY(-1px); }
+.btn-send-email .bc-bg { position:absolute; inset:0; border-radius:2px; background:linear-gradient(135deg,#0b1440 0%,#2440b8 50%,#0b1440 100%); background-size:220%; animation:btnSh 4.5s infinite; }
+.btn-send-email .bc-bd { position:absolute; inset:0; border-radius:2px; padding:1px; background:linear-gradient(135deg,rgba(201,169,106,.85),rgba(157,184,232,.4),rgba(230,207,156,.7)); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; }
+.btn-send-email .bc-lbl { position:relative; z-index:1; font-family:'Cormorant Garamond',serif; font-size:14px; font-weight:600; letter-spacing:.38em; text-transform:uppercase; color:var(--pearl-l); display:flex; align-items:center; justify-content:center; gap:10px; }
+.btn-send-email:disabled { opacity:.35; cursor:not-allowed; }
+.btn-send-email:disabled .bc-bg { animation:none; }
+
+.btn-skip-email { background:transparent; border:none; cursor:pointer; margin-top:14px; font-family:'Cormorant Garamond',serif; font-size:12px; font-weight:400; font-style:italic; letter-spacing:.14em; color:rgba(157,184,232,.35); padding:6px 18px; border-bottom:1px solid rgba(157,184,232,.1); transition:all .3s; }
+.btn-skip-email:hover { color:rgba(157,184,232,.65); border-bottom-color:rgba(157,184,232,.3); }
+
+.email-status { margin-top:14px; min-height:20px; font-family:'Cormorant Garamond',serif; font-size:14px; font-style:italic; color:rgba(157,184,232,.6); transition:opacity .4s; }
+.email-status.ok  { color:rgba(134,239,172,.8); }
+.email-status.err { color:rgba(248,113,113,.8); }
+
+/* Sending spinner inside button */
+@keyframes btnSpinner { to{transform:rotate(360deg)} }
+.send-spinner { width:14px; height:14px; border-radius:50%; border:1.5px solid rgba(223,231,245,.3); border-top-color:var(--pearl-l); animation:btnSpinner .8s linear infinite; flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<div class="scene-bg"></div>
+<div class="spotlight"></div>
+<div class="carpet-runner"></div>
+<div class="carpet-sheen"></div>
+<div class="vign"></div>
+<div class="grain"></div>
+<div class="motes" id="motes"></div>
+<div class="live-badge"><span class="live-dot"></span>AI Experience</div>
+
+<!-- ═══ SCENE 0 — CURTAIN ═══ -->
+<div class="scene active" id="scene-curtain">
+  <div class="curtain-wrap">
+    <div class="curtain-panel left" id="c-left">
+      <div class="curtain-fabric"></div>
+      <div class="c-braid"></div>
+    </div>
+    <div class="curtain-panel right" id="c-right">
+      <div class="curtain-fabric"></div>
+      <div class="c-braid"></div>
+    </div>
+  </div>
+  <div class="flash-field" id="flash-field"></div>
+  <div class="flash-bloom" id="flash-bloom"></div>
+  <div class="curtain-stage">
+    <div class="c-eye">iS Clinical · Future of Aesthetics 2026</div>
+    <div class="c-title">Blue<br>Carpet</div>
+    <div class="c-rule rule"><div class="ln a"></div><div class="dot"></div><div class="ln b"></div></div>
+    <div class="c-sub">An AI cinematic experience</div>
+    <div class="c-cta" onclick="openCurtain()">
+      <div class="c-cta-txt">Step Inside</div>
+      <div class="c-cta-line"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SCENE 1 — STAGE ═══ -->
+<div class="scene" id="scene-main">
+  <div id="steps" style="display:none"><div id="step1"></div><div id="step2"></div><div id="step3"></div></div>
+
+  <div class="masthead">
+    <span class="mast-eye">Your cinematic moment awaits</span>
+    <span class="mast-ttl">Blue Carpet</span>
+  </div>
+
+  <div class="frame-stage">
+    <div class="f-border">
+      <div class="f-inner">
+        <div class="fcm fcm-tl"></div><div class="fcm fcm-tr"></div>
+        <div class="fcm fcm-bl"></div><div class="fcm fcm-br"></div>
+        <div id="fguide"><div class="bshape"></div><span class="fhint t">Step back — full body in frame</span><span class="fhint b">Remove headphones · face forward</span></div>
+        <div class="cam-ph off" id="cam-ph" onclick="initCamera()">
+          <div class="cam-ret">
+            <div class="cam-ret-ring"></div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+          </div>
+          <p id="ph-text">Choose your look below</p>
+          <p class="cam-hint">then tap to step into the light</p>
+        </div>
+        <video id="video-el" autoplay playsinline muted></video>
+        <img id="photo-preview" alt="">
+        <div id="cdown"><span class="cnum" id="cnum">3</span></div>
+        <div id="flash-overlay"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="look-row">
+    <span class="look-lbl">Your Look</span>
+    <button class="g-btn" id="btn-male"   onclick="selectGender('male')"><span>Male</span></button>
+    <button class="g-btn" id="btn-female" onclick="selectGender('female')"><span>Female</span></button>
+  </div>
+
+  <div class="action-row">
+    <div class="shimmer-line" id="shimmer"></div>
+    <button class="btn-cap" id="cap-btn" onclick="startCountdown()" disabled>
+      <div class="bc-bg"></div><div class="bc-bd"></div>
+      <span class="bc-lbl" id="cap-label">Step Into the Light</span>
+    </button>
+    <button class="btn-ret" id="ret-btn" onclick="retake()" disabled>Retake Photo</button>
+  </div>
+</div>
+
+<!-- ═══ SCENE 2 — PROCESSING ═══ -->
+<div class="scene" id="scene-processing">
+  <div class="proc-wrap">
+    <div class="proc-rings">
+      <div class="p-brk tl"></div><div class="p-brk tr"></div>
+      <div class="p-brk bl"></div><div class="p-brk br"></div>
+      <div class="p-ring p-ring-1"></div>
+      <div class="p-ring p-ring-2"></div>
+      <div class="p-ring p-ring-3"></div>
+      <div class="p-spin"></div>
+      <div class="p-thumb"><img id="proc-snap" src="" alt=""></div>
+    </div>
+    <div class="p-title">Creating Your Moment</div>
+    <div class="p-rule rule"><div class="ln a"></div><div class="dot"></div><div class="ln b"></div></div>
+    <div class="p-status" id="p-status">Preparing your blue carpet moment…</div>
+    <div class="p-dots"><div class="p-dot"></div><div class="p-dot"></div><div class="p-dot"></div></div>
+    <div class="p-scan"><div class="p-scan-b"></div></div>
+    <div class="p-error" id="p-error"></div>
+    <button class="btn-p-retry" id="btn-retry" onclick="retake()">Start Again</button>
+  </div>
+</div>
+
+<!-- ═══ SCENE 3 — RESULT ═══ -->
+<div class="scene" id="scene-result">
+  <div class="res-wrap">
+    <div class="res-eye">iS Clinical · Future of Aesthetics 2026</div>
+    <div class="res-ttl">Your Blue<br>Carpet Moment</div>
+    <div class="res-rule rule"><div class="ln a"></div><div class="dot"></div><div class="ln b"></div></div>
+    <div class="res-vid-wrap">
+      <div class="res-vid-inner">
+        <div class="res-topbar">
+          <span class="res-bar-lbl">Blue Carpet Experience</span>
+          <span class="res-ready"><span class="r-dot"></span>Ready</span>
+        </div>
+        <video id="result-video" controls loop autoplay playsinline></video>
+      </div>
+    </div>
+    <div class="res-actions">
+      <a class="btn-save" id="dl-link" href="#" download="blue-carpet-moment.mp4">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Save Your Moment
+      </a>
+      <button class="btn-again" onclick="resetToMain()">Go Again</button>
+    </div>
+    <div class="res-hint">Share your blue carpet moment</div>
+  </div>
+</div>
+
+<!-- ═══ SCENE 4 — EMAIL ═══ -->
+<div class="scene" id="scene-email">
+  <div class="email-wrap">
+    <div class="email-eye">iS Clinical · Future of Aesthetics 2026</div>
+    <div class="email-ttl">Send Your<br>Moment</div>
+    <div class="email-rule rule"><div class="ln a"></div><div class="dot"></div><div class="ln b"></div></div>
+    <div class="email-sub">Enter your email and we'll send<br>your blue carpet video directly to you.</div>
+    <div class="email-thumb-wrap">
+      <img id="email-thumb" src="" alt="">
+      <div class="email-thumb-ring"></div>
+    </div>
+    <div class="email-field-wrap" style="margin-bottom:10px;">
+      <input type="text" id="email-name-input" placeholder="Your name (optional)" autocomplete="given-name">
+    </div>
+    <div class="email-field-wrap">
+      <input type="email" id="email-input" placeholder="your@email.com" autocomplete="email" inputmode="email">
+    </div>
+    <button class="btn-send-email" id="btn-send-email" onclick="sendEmail()">
+      <div class="bc-bg"></div><div class="bc-bd"></div>
+      <span class="bc-lbl" id="send-lbl">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+        Send to My Email
+      </span>
+    </button>
+    <button class="btn-skip-email" onclick="showScene('scene-result')">Skip — just show me the video</button>
+    <div class="email-status" id="email-status"></div>
+  </div>
+</div>
+
+<script>
+// Light motes
+(function(){
+  var c=document.getElementById('motes');
+  for(var i=0;i<18;i++){
+    var s=document.createElement('div'); s.className='mote';
+    var sz=Math.random()*2.5+1.2;
+    s.style.cssText='width:'+sz+'px;height:'+sz+'px;left:'+(Math.random()*100)+'%;animation-duration:'+(Math.random()*13+9)+'s;animation-delay:'+(Math.random()*11)+'s';
+    c.appendChild(s);
+  }
+})();
+
+function showScene(id){
+  document.querySelectorAll('.scene').forEach(function(s){ s.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+// ── CURTAIN ──
+var curtainDone=false;
+
+// Fire a single camera flash at a given position
+function fireFlash(xPct, yPct, size){
+  var field=document.getElementById('flash-field');
+  if(!field) return;
+  var f=document.createElement('div');
+  f.className='flash';
+  var s=size||(Math.random()*22+12);
+  f.style.left=xPct+'%';
+  f.style.top=yPct+'%';
+  f.style.width=s+'px';
+  f.style.height=s+'px';
+  f.style.marginLeft=(-s/2)+'px';
+  f.style.marginTop=(-s/2)+'px';
+  field.appendChild(f);
+  // force reflow then animate
+  f.offsetHeight;
+  f.classList.add('pop');
+  setTimeout(function(){ if(f.parentNode) f.parentNode.removeChild(f); },480);
+}
+
+// Occasional full-screen white "kiss" for the densest moments
+function bloomKiss(){
+  var b=document.getElementById('flash-bloom');
+  if(!b) return;
+  b.classList.remove('kiss'); b.offsetHeight; b.classList.add('kiss');
+}
+
+// The paparazzi storm — flashes cluster along the parting centre line,
+// building to a crescendo as the curtains pull apart, then tapering off
+function paparazziStorm(){
+  var startT=performance.now();
+  var duration=2300;       // runs slightly longer than the 2.2s curtain
+  var lastBloom=0;
+
+  function tick(now){
+    var t=(now-startT)/duration;          // 0 → 1 progress
+    if(t>=1) return;
+
+    // Intensity curve: ramps up, peaks around the curtain fully parting, eases out
+    var intensity = t<0.7 ? (t/0.7) : (1-(t-0.7)/0.3);
+    intensity = Math.max(0.08, intensity);
+
+    // How many flashes this frame — denser at the peak
+    var burst = 1 + Math.floor(Math.random()*3*intensity + intensity*2);
+
+    for(var i=0;i<burst;i++){
+      // Flashes hug the centre seam where the curtains part, spreading wider over time
+      var spread = 12 + t*40;             // % spread either side of centre
+      var x = 50 + (Math.random()*2-1)*spread;
+      // ...but also some scattered around the whole "crowd"
+      if(Math.random()<0.35) x = Math.random()*100;
+      var y = 8 + Math.random()*78;       // weighted across the height
+      fireFlash(x, y);
+    }
+
+    // Dense moments get a white kiss — but rate-limited so it doesn't strobe harshly
+    if(intensity>0.6 && now-lastBloom>260 && Math.random()<0.5){
+      bloomKiss();
+      lastBloom=now;
+    }
+
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
+function openCurtain(){
+  if(curtainDone) return; curtainDone=true;
+  // a couple of anticipation flashes the instant they tap
+  fireFlash(38,32,26); fireFlash(64,55,22);
+  document.getElementById('c-left').classList.add('open');
+  document.getElementById('c-right').classList.add('open');
+  paparazziStorm();
+  setTimeout(function(){ showScene('scene-main'); },2150);
+}
+
+// ── STATE ──
+var gender=null, stream=null, b64=null, countTimer=null;
+function el(id){ return document.getElementById(id); }
+function setStep(n){ for(var i=1;i<=3;i++){ var s=el('step'+i); if(!s)continue; s.classList.remove('active','done'); if(i<n)s.classList.add('done'); else if(i===n)s.classList.add('active'); } }
+
+function selectGender(g){
+  gender=g;
+  el('btn-male').classList.toggle('sel', g==='male');
+  el('btn-female').classList.toggle('sel', g==='female');
+  el('cam-ph').classList.remove('off');
+  if(!stream){
+    el('ph-text').textContent='Tap to step into the light';
+    el('shimmer').classList.add('on');
+  }
+  setStep(2);
+  if(stream) el('cap-btn').disabled=false;
+}
+
+function initCamera(){
+  if(!gender) return;
+  el('cam-ph').style.pointerEvents='none';
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1080},height:{ideal:1920}},audio:false})
+    .then(function(s){
+      stream=s;
+      el('video-el').srcObject=s;
+      el('video-el').style.display='block';
+      el('cam-ph').style.display='none';
+      el('fguide').classList.add('on');
+      el('cap-btn').disabled=false;
+      el('shimmer').classList.add('on');
+    })
+    .catch(function(){
+      el('cam-ph').innerHTML='<p style="color:#e88;font-size:14px;font-style:italic;padding:28px;text-align:center;line-height:1.9;font-family:\'Cormorant Garamond\',serif">Camera access denied.<br>Please refresh and allow access.</p>';
+    });
+}
+
+function startCountdown(){
+  if(el('cap-btn').disabled||!gender) return;
+  el('cap-btn').disabled=true; el('ret-btn').disabled=true;
+  var n=3; showCD(n);
+  countTimer=setInterval(function(){
+    n--; if(n<=0){ clearInterval(countTimer); el('cdown').classList.remove('on'); snap(); } else showCD(n);
+  },1000);
+}
+function showCD(n){
+  el('cnum').textContent=n; el('cdown').classList.add('on');
+  var c=el('cnum'); c.style.animation='none'; c.offsetHeight; c.style.animation='cPulse 1s cubic-bezier(0.2,0.7,0.3,1)';
+}
+
+function snap(){
+  var f=el('flash-overlay'); f.classList.remove('on'); f.offsetHeight; f.classList.add('on');
+  el('fguide').classList.remove('on');
+  var v=el('video-el');
+
+  // Composite onto a neutral dark background — removes bedroom/room context
+  // so Hailuo doesn't anchor the first frame to the source environment
+  var cv=document.createElement('canvas');
+  cv.width=768; cv.height=1024;
+  var ctx=cv.getContext('2d');
+
+  // Dark neutral background
+  ctx.fillStyle='#111118';
+  ctx.fillRect(0,0,cv.width,cv.height);
+
+  // Crop-to-fill: scale so the video fills the entire canvas, centred
+  // This keeps the face large rather than letterboxing it into a small box
+  var vw=v.videoWidth||1080, vh=v.videoHeight||1920;
+  var scale=Math.max(cv.width/vw, cv.height/vh);
+  var dw=vw*scale, dh=vh*scale;
+  var dx=(cv.width-dw)/2, dy=(cv.height-dh)/2;
+  ctx.drawImage(v, dx, dy, dw, dh);
+
+  var url=cv.toDataURL('image/jpeg',0.92);
+  b64=url.split(',')[1];
+  el('proc-snap').src=url;
+  el('photo-preview').src=url; el('photo-preview').style.display='block';
+  el('video-el').style.display='none';
+  el('ret-btn').disabled=false;
+  setStep(3);
+  setTimeout(function(){ showScene('scene-processing'); generate(); },400);
+}
+
+function retake(){
+  b64=null;
+  el('photo-preview').src=''; el('photo-preview').style.display='none';
+  el('video-el').style.display='block'; el('fguide').classList.add('on');
+  el('cap-btn').disabled=false; el('cap-label').textContent='Step Into the Light';
+  el('ret-btn').disabled=true;
+  el('p-error').style.display='none'; el('btn-retry').style.display='none';
+  setStep(2); showScene('scene-main');
+}
+
+function resetToMain(){
+  b64=null; gender=null; window._videoUrl=null;
+  el('btn-male').classList.remove('sel'); el('btn-female').classList.remove('sel');
+  el('photo-preview').src=''; el('photo-preview').style.display='none';
+  el('cam-ph').classList.add('off'); el('cam-ph').style.display='';
+  el('cam-ph').style.pointerEvents=''; el('ph-text').textContent='Choose your look below';
+  el('video-el').style.display='none';
+  if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
+  el('fguide').classList.remove('on');
+  el('cap-btn').disabled=true; el('ret-btn').disabled=true;
+  el('result-video').src=''; el('shimmer').classList.remove('on');
+  el('cap-label').textContent='Step Into the Light';
+  el('p-error').style.display='none'; el('btn-retry').style.display='none';
+  // reset email scene
+  el('email-input').value='';
+  if(el('email-name-input')) el('email-name-input').value='';
+  el('btn-send-email').disabled=false;
+  el('send-lbl').innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Send to My Email';
+  setEmailStatus('','');
+  setStep(1); showScene('scene-main');
+}
+
+// ── GENERATION ──
+var msgs=[
+  'Rolling out the blue carpet…',
+  'Paparazzi taking position…',
+  'Lights, camera, action…',
+  'Almost ready for your close-up…',
+  'Still generating… this takes up to 2 minutes'
+];
+var mIdx=0;
+function setStatus(t){ el('p-status').textContent=t; }
+
+function generate(){
+  el('p-error').style.display='none'; el('btn-retry').style.display='none';
+  mIdx=0; setStatus(msgs[0]);
+  fetch('/api/predict',{
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({imageBase64:b64,gender:gender})
+  })
+  .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
+  .then(function(res){
+    if(!res.ok||res.data.error) throw new Error(res.data.error||res.data.detail||'Failed to start');
+    if(!res.data.id) throw new Error('No prediction ID');
+    return poll(res.data);
+  })
+  .then(function(result){
+    if(result.status==='succeeded'){
+      var url=Array.isArray(result.output)?result.output[0]:result.output;
+      if(!url) throw new Error('No video URL');
+      el('result-video').src=url; el('dl-link').href=url;
+      el('email-thumb').src=el('proc-snap').src;   // carry snapshot into email scene
+      window._videoUrl=url;                         // store for email sending
+      showScene('scene-email');
+    } else { throw new Error(result.error||'Generation failed'); }
+  })
+  .catch(function(e){
+    el('p-error').textContent='Something went wrong: '+e.message;
+    el('p-error').style.display='block'; el('btn-retry').style.display='block';
+  });
+}
+
+function poll(pred){
+  if(pred.status==='succeeded'||pred.status==='failed'||pred.status==='canceled') return Promise.resolve(pred);
+  setStatus(msgs[Math.min(mIdx++, msgs.length-1)]);
+  return sleep(5000).then(function(){
+    return fetch('/api/predict?id='+pred.id).then(function(r){return r.json();}).then(function(d){return poll(d);});
+  });
+}
+
+function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
+
+// ── EMAIL SENDING ──
+function sendEmail(){
+  var emailVal=(el('email-input').value||'').trim();
+  if(!emailVal||!emailVal.includes('@')){
+    setEmailStatus('Please enter a valid email address.','err'); return;
+  }
+  if(!window._videoUrl){
+    setEmailStatus('Video not ready — please try again.','err'); return;
+  }
+  var btn=el('btn-send-email');
+  btn.disabled=true;
+  el('send-lbl').innerHTML='<div class="send-spinner"></div>Sending…';
+  setEmailStatus('','');
+
+  // Collect optional name from input if present, else leave blank (function uses 'Star' as fallback)
+  var nameVal=(el('email-name-input')?el('email-name-input').value:'').trim();
+  fetch('/.netlify/functions/send-blue-carpet-email',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({email:emailVal,name:nameVal,videoUrl:window._videoUrl})
+  })
+  .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
+  .then(function(res){
+    if(!res.ok||res.data.error) throw new Error(res.data.error||'Send failed');
+    setEmailStatus('✦  Sent! Check your inbox.','ok');
+    el('send-lbl').innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Delivered';
+    // After a beat, move to result so they can still watch/download
+    setTimeout(function(){ showScene('scene-result'); },2200);
+  })
+  .catch(function(e){
+    setEmailStatus('Couldn\'t send: '+e.message,'err');
+    btn.disabled=false;
+    el('send-lbl').innerHTML='<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Try Again';
+  });
+}
+
+function setEmailStatus(msg,type){
+  var s=el('email-status');
+  s.textContent=msg;
+  s.className='email-status'+(type?' '+type:'');
+}
+
+// listen for Enter key on email input
+document.addEventListener('DOMContentLoaded',function(){
+  var inp=el('email-input');
+  if(inp) inp.addEventListener('keydown',function(e){ if(e.key==='Enter') sendEmail(); });
+});
+</script>
 </body>
-</html>`;
-}
-
-function buildTextEmail(email, videoUrl, attached) {
-  const videoLine = attached
-    ? 'Your blue carpet video is attached to this email as blue-carpet-moment.mp4.'
-    : `Your blue carpet video is ready to download:\n${videoUrl}`;
-
-  return `YOUR BLUE CARPET MOMENT
-iS Clinical · Future of Aesthetics 2026
-
-You stepped onto the blue carpet. Here's your cinematic moment.
-
-${videoLine}
-
-Generated exclusively at the iS Clinical Future of Aesthetics 2026 event.
-
-iS Clinical Skincare South Africa · sternlaser.co.za`;
-}
+</html>
