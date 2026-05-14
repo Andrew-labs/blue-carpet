@@ -1,667 +1,228 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Blue Carpet — AI Experience</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Tenor+Sans&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
-<style>
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+/**
+ * /api/send-email.js
+ * Blue Carpet — Postmark email route
+ *
+ * POST body: { email: string, videoUrl: string }
+ *
+ * Flow:
+ *  1. Validate inputs
+ *  2. Fetch the video from the Replicate CDN URL
+ *  3. Check size against Postmark's 10MB total message limit
+ *     - Under limit  → attach the video directly (base64)
+ *     - Over limit   → send a branded HTML email with a download link instead
+ *  4. POST to https://api.postmarkapp.com/email with correct headers
+ *
+ * Required env vars:
+ *   POSTMARK_SERVER_TOKEN   — your Postmark server API token
+ *   EMAIL_FROM              — verified sender signature, e.g. "Blue Carpet <bluecarpet@yourdomain.com>"
+ *
+ * Drop this file into your existing /api directory alongside predict.js
+ * and register the route in your server the same way as /api/predict.
+ */
 
-:root {
-  --deep:     #010714;
-  --mid:      #030e28;
-  --carpet:   #0a1a5c;
-  --bright:   #1a3aff;
-  --glow:     #2a5cff;
-  --ice:      #6ab0ff;
-  --silver:   #c8d8f0;
-  --silver-l: #e8f0ff;
-  --silver-d: #7a9abf;
-}
+// ── CONFIG ──────────────────────────────────────────────────────────────────
+const POSTMARK_API  = 'https://api.postmarkapp.com/email';
+const SERVER_TOKEN  = process.env.POSTMARK_SERVER_TOKEN;
+const FROM_ADDRESS  = process.env.EMAIL_FROM || 'Blue Carpet <noreply@yourdomain.com>';
 
-html, body {
-  width:100%; height:100%; overflow:hidden;
-  background:var(--deep);
-  color:#fff;
-  font-family:'Tenor Sans', sans-serif;
-}
+// Postmark's hard limit is 10 MB total *after* base64 encoding.
+// Base64 inflates by ~33 %, so a 7.5 MB video ≈ 10 MB encoded.
+// We keep headroom for HTML body + headers by capping at 7 MB raw.
+const MAX_ATTACH_BYTES = 7 * 1024 * 1024; // 7 MB raw
 
-/* ── PERSISTENT ATMOSPHERE ── */
-.scene-bg {
-  position:fixed; inset:0; z-index:0; pointer-events:none;
-  background:
-    radial-gradient(ellipse 90% 55% at 50% 0%, rgba(26,58,255,0.14) 0%, transparent 55%),
-    radial-gradient(ellipse 55% 90% at 0% 50%, rgba(1,7,20,0.97) 0%, transparent 50%),
-    radial-gradient(ellipse 55% 90% at 100% 50%, rgba(1,7,20,0.97) 0%, transparent 50%),
-    linear-gradient(180deg, #010714 0%, #010510 100%);
-}
-.carpet-runner {
-  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
-  width:46%; height:55%; z-index:0; pointer-events:none;
-  background:linear-gradient(180deg, transparent 0%, rgba(10,26,92,0.25) 40%, rgba(26,58,255,0.1) 70%, rgba(10,26,92,0.42) 100%);
-  clip-path:polygon(18% 0%, 82% 0%, 100% 100%, 0% 100%);
-}
-.vign-l { position:fixed; inset:0 auto 0 0; width:20%; z-index:0; pointer-events:none; background:linear-gradient(90deg, rgba(1,7,20,0.98) 0%, transparent 100%); }
-.vign-r { position:fixed; inset:0 0 0 auto; width:20%; z-index:0; pointer-events:none; background:linear-gradient(-90deg, rgba(1,7,20,0.98) 0%, transparent 100%); }
-.grain  { position:fixed; inset:0; z-index:1; pointer-events:none; opacity:0.02;
-  background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size:180px; }
-.sparks { position:fixed; inset:0; z-index:1; pointer-events:none; }
-.spark  { position:absolute; border-radius:50%;
-  background:radial-gradient(circle, var(--silver-l) 0%, var(--ice) 55%, transparent 100%);
-  opacity:0; animation:sparkRise linear infinite;
-  box-shadow:0 0 5px rgba(106,176,255,0.35); }
-@keyframes sparkRise { 0%{opacity:0;transform:translateY(50px) scale(.2)} 8%{opacity:.75} 90%{opacity:.1} 100%{opacity:0;transform:translateY(-105vh) scale(.6)} }
+// ── HANDLER ─────────────────────────────────────────────────────────────────
+module.exports = async function sendEmailHandler(req, res) {
 
-/* Live badge */
-.live-badge {
-  position:fixed; top:14px; right:14px; z-index:300;
-  display:flex; align-items:center; gap:6px;
-  background:rgba(1,7,20,0.85); border:1px solid rgba(106,176,255,0.18);
-  padding:5px 11px; border-radius:100px;
-  font-family:'DM Mono',monospace; font-size:7px; letter-spacing:0.2em; text-transform:uppercase;
-  color:rgba(106,176,255,0.55); backdrop-filter:blur(14px);
-}
-.live-dot { width:4px; height:4px; border-radius:50%; background:var(--glow); box-shadow:0 0 6px var(--glow); animation:livePulse 2s infinite; }
-@keyframes livePulse { 0%,100%{box-shadow:0 0 0 0 rgba(42,92,255,.5)} 50%{box-shadow:0 0 0 4px rgba(42,92,255,0)} }
-
-/* ══════════════════════════════════════
-   SCENE SYSTEM
-══════════════════════════════════════ */
-.scene {
-  position:fixed; inset:0; z-index:10;
-  display:flex; flex-direction:column; align-items:center;
-  opacity:0; pointer-events:none;
-  transition:opacity 0.65s ease;
-  overflow-y:auto; overflow-x:hidden;
-}
-.scene.active { opacity:1; pointer-events:all; }
-
-/* ══════════════════════════════════════
-   SCENE 0 — CURTAIN
-══════════════════════════════════════ */
-#scene-curtain { z-index:100; overflow:hidden; }
-
-.curtain-wrap { position:absolute; inset:0; display:flex; }
-
-.curtain-panel {
-  position:relative; width:50%; height:100%;
-  overflow:hidden;
-  transition:transform 1.7s cubic-bezier(0.76,0,0.24,1);
-}
-.curtain-panel.left  { transform-origin:left center; }
-.curtain-panel.right { transform-origin:right center; }
-.curtain-panel.left.open  { transform:translateX(-100%); }
-.curtain-panel.right.open { transform:translateX(100%); }
-
-.curtain-fabric { position:absolute; inset:0; }
-.curtain-panel.left .curtain-fabric {
-  background:
-    repeating-linear-gradient(180deg, transparent 0, transparent 22px, rgba(255,255,255,0.013) 22px, rgba(255,255,255,0.013) 24px),
-    repeating-linear-gradient(90deg, rgba(0,0,0,.28) 0, rgba(0,0,0,0) 10px, rgba(0,0,0,0) 22px, rgba(0,0,0,.2) 32px, rgba(0,0,0,0) 42px, rgba(0,0,0,0) 58px, rgba(0,0,0,.24) 68px, rgba(0,0,0,0) 78px),
-    linear-gradient(90deg, #021030 0%, #062264 28%, #041840 52%, #073070 72%, #031540 88%, #041030 100%);
-}
-.curtain-panel.right .curtain-fabric {
-  background:
-    repeating-linear-gradient(180deg, transparent 0, transparent 22px, rgba(255,255,255,0.013) 22px, rgba(255,255,255,0.013) 24px),
-    repeating-linear-gradient(90deg, rgba(0,0,0,0) 0, rgba(0,0,0,.24) 10px, rgba(0,0,0,0) 20px, rgba(0,0,0,0) 36px, rgba(0,0,0,.2) 46px, rgba(0,0,0,0) 56px, rgba(0,0,0,0) 70px, rgba(0,0,0,.28) 80px),
-    linear-gradient(90deg, #041030 0%, #031540 12%, #073070 28%, #041840 52%, #062264 72%, #021030 100%);
-}
-
-/* Sheen on inner edge */
-.curtain-panel.left::after  { content:''; position:absolute; top:0; right:0; bottom:0; width:70px; background:linear-gradient(90deg, transparent, rgba(106,176,255,0.09) 60%, rgba(200,216,240,0.05)); pointer-events:none; }
-.curtain-panel.right::after { content:''; position:absolute; top:0; left:0; bottom:0; width:70px; background:linear-gradient(-90deg, transparent, rgba(106,176,255,0.09) 60%, rgba(200,216,240,0.05)); pointer-events:none; }
-
-/* Gold braid trim */
-.c-braid { position:absolute; top:0; bottom:0; width:5px; z-index:2; }
-.curtain-panel.left  .c-braid { right:0; background:linear-gradient(180deg,#7a6020,#c9a050 15%,#edd880 50%,#c9a050 85%,#7a6020); }
-.curtain-panel.right .c-braid { left:0;  background:linear-gradient(180deg,#7a6020,#c9a050 15%,#edd880 50%,#c9a050 85%,#7a6020); }
-
-/* Center stage reveal */
-.curtain-stage {
-  position:absolute; inset:0; z-index:5;
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  pointer-events:none; gap:6px;
-}
-.c-title {
-  font-family:'Playfair Display',serif;
-  font-size:clamp(42px,12vw,90px);
-  font-weight:900; font-style:italic;
-  line-height:0.88; letter-spacing:-0.02em; text-align:center;
-  background:linear-gradient(150deg, var(--silver-d) 0%, var(--silver-l) 28%, #fff 48%, var(--ice) 64%, var(--silver) 100%);
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  filter:drop-shadow(0 0 40px rgba(42,92,255,.4));
-  opacity:0; animation:fadeScale 1.4s .4s ease forwards;
-}
-.c-sub {
-  font-family:'DM Mono',monospace; font-size:8px; letter-spacing:.5em; text-transform:uppercase;
-  color:rgba(106,176,255,.45);
-  opacity:0; animation:fadeScale .9s .9s ease forwards;
-}
-.c-cta {
-  margin-top:18px; pointer-events:all; cursor:pointer;
-  font-family:'DM Mono',monospace; font-size:9px; letter-spacing:.35em; text-transform:uppercase;
-  color:rgba(200,216,240,.55);
-  border-bottom:1px solid rgba(106,176,255,.25); padding-bottom:3px;
-  opacity:0; animation:fadeScale .8s 1.7s ease forwards, ctaPulse 2.4s 2.6s ease-in-out infinite;
-}
-@keyframes fadeScale { from{opacity:0;transform:scale(.92)} to{opacity:1;transform:scale(1)} }
-@keyframes ctaPulse  { 0%,100%{opacity:.5} 50%{opacity:1} }
-
-/* ══════════════════════════════════════
-   SCENE 1 — MAIN
-══════════════════════════════════════ */
-#scene-main { justify-content:flex-start; padding-bottom:48px; }
-
-.masthead { width:100%; text-align:center; padding:28px 24px 6px; }
-.mast-eye  { font-family:'DM Mono',monospace; font-size:7.5px; letter-spacing:.5em; text-transform:uppercase; color:rgba(106,176,255,.38); display:block; margin-bottom:10px; }
-.mast-ttl  {
-  font-family:'Playfair Display',serif; font-size:clamp(44px,13vw,96px);
-  font-weight:900; font-style:italic; line-height:.88; letter-spacing:-.02em; display:block;
-  background:linear-gradient(150deg,var(--silver-d) 0%,var(--silver-l) 25%,#fff 45%,var(--ice) 62%,var(--silver) 100%);
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  filter:drop-shadow(0 4px 36px rgba(42,92,255,.2));
-}
-.mast-tag  { font-family:'Tenor Sans',sans-serif; font-size:clamp(9px,2vw,12px); letter-spacing:.45em; text-transform:uppercase; color:rgba(106,176,255,.42); display:block; margin-top:11px; }
-.t-rule    { display:flex; align-items:center; justify-content:center; gap:12px; margin:13px auto 0; width:180px; }
-.trl       { flex:1; height:1px; }
-.trl.a     { background:linear-gradient(90deg, transparent, rgba(106,176,255,.3)); }
-.trl.b     { background:linear-gradient(-90deg, transparent, rgba(106,176,255,.3)); }
-.trd       { width:4px; height:4px; background:var(--ice); transform:rotate(45deg); box-shadow:0 0 7px var(--glow); }
-
-/* Frame */
-.frame-stage { position:relative; width:100%; max-width:480px; margin:18px auto 0; padding:0 20px; }
-.f-border {
-  position:relative; padding:1.5px; border-radius:3px;
-  background:linear-gradient(135deg, rgba(106,176,255,.5) 0%, rgba(42,92,255,.22) 40%, rgba(200,216,240,.42) 70%, rgba(106,176,255,.5) 100%);
-  box-shadow:0 0 32px rgba(42,92,255,.16), 0 0 64px rgba(42,92,255,.06);
-}
-.f-inner { position:relative; aspect-ratio:4/3; overflow:hidden; background:#010510; border-radius:2px; }
-.f-inner::after { content:''; position:absolute; inset:0; z-index:5; pointer-events:none; background:radial-gradient(ellipse 80% 80% at 50% 50%, transparent 50%, rgba(1,5,16,.5) 100%); }
-.fcm { position:absolute; width:13px; height:13px; z-index:10; pointer-events:none; }
-.fcm::before,.fcm::after { content:''; position:absolute; background:var(--ice); box-shadow:0 0 5px var(--glow); }
-.fcm::before { width:100%; height:1px; top:0; left:0; }
-.fcm::after  { width:1px; height:100%; top:0; left:0; }
-.fcm-tl{top:-2px;left:-2px} .fcm-tr{top:-2px;right:-2px;transform:scaleX(-1)}
-.fcm-bl{bottom:-2px;left:-2px;transform:scaleY(-1)} .fcm-br{bottom:-2px;right:-2px;transform:scale(-1)}
-
-.cam-ph { position:absolute; inset:0; z-index:4; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; cursor:pointer; background:radial-gradient(ellipse 55% 55% at 50% 50%, rgba(26,58,255,.06) 0%, transparent 70%); transition:background .3s; }
-.cam-ph:hover:not(.off) { background:radial-gradient(ellipse 55% 55% at 50% 50%, rgba(26,58,255,.12) 0%, transparent 70%); }
-.cam-ph.off { pointer-events:none; }
-.cam-ret { position:relative; width:64px; height:64px; }
-.cam-ret-ring { position:absolute; inset:0; border-radius:50%; border:1px solid rgba(106,176,255,.2); }
-.cam-ret-ring::before { content:''; position:absolute; inset:-11px; border-radius:50%; border:1px dashed rgba(106,176,255,.09); animation:spinSlow 25s linear infinite; }
-@keyframes spinSlow { to{transform:rotate(360deg)} }
-.cam-ret svg { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:23px; height:23px; color:rgba(106,176,255,.38); }
-.cam-ph p { font-family:'DM Mono',monospace; font-size:8.5px; letter-spacing:.22em; text-transform:uppercase; color:rgba(200,216,240,.33); }
-.cam-hint { font-size:7.5px!important; letter-spacing:.1em!important; text-transform:none!important; color:rgba(200,216,240,.18)!important; }
-
-#fguide { position:absolute; inset:0; z-index:6; pointer-events:none; display:none; align-items:center; justify-content:center; }
-#fguide.on { display:flex; }
-.bshape { position:relative; width:35%; height:77%; border:1px dashed rgba(106,176,255,.27); border-radius:55px 55px 25px 25px; }
-.bshape::before { content:''; position:absolute; top:-13%; left:50%; transform:translateX(-50%); width:40%; aspect-ratio:1; border:1px dashed rgba(106,176,255,.27); border-radius:50%; }
-.fhint { position:absolute; left:50%; transform:translateX(-50%); font-family:'DM Mono',monospace; font-size:7px; letter-spacing:.16em; text-transform:uppercase; color:var(--ice); background:rgba(1,7,20,.75); padding:3px 9px; border-radius:20px; white-space:nowrap; }
-.fhint.t{top:9px} .fhint.b{bottom:9px}
-
-#video-el      { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transform:scaleX(-1); display:none; z-index:2; }
-#photo-preview { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; z-index:3; }
-
-#cdown { position:absolute; inset:0; z-index:10; display:flex; align-items:center; justify-content:center; background:rgba(1,7,20,.55); opacity:0; pointer-events:none; transition:opacity .3s; }
-#cdown.on { opacity:1; }
-.cnum { font-family:'Playfair Display',serif; font-size:110px; font-weight:900; font-style:italic; background:linear-gradient(135deg,var(--silver-l),var(--ice)); -webkit-background-clip:text; background-clip:text; color:transparent; line-height:1; filter:drop-shadow(0 0 50px rgba(42,92,255,.5)); animation:cPulse 1s ease-in-out; }
-@keyframes cPulse { 0%{transform:scale(1.7);opacity:0} 25%{transform:scale(1);opacity:1} 85%{transform:scale(.95);opacity:1} 100%{transform:scale(.9);opacity:0} }
-#flash-overlay { position:absolute; inset:0; background:white; z-index:20; opacity:0; pointer-events:none; }
-#flash-overlay.on { animation:flashOut .35s ease-out forwards; }
-@keyframes flashOut { 0%{opacity:1} 100%{opacity:0} }
-
-.sec-lbl { font-family:'DM Mono',monospace; font-size:7.5px; letter-spacing:.45em; text-transform:uppercase; color:rgba(106,176,255,.32); text-align:center; margin-top:22px; }
-.gender-row { display:flex; align-items:center; justify-content:center; gap:11px; margin-top:10px; }
-.g-btn { position:relative; width:132px; height:44px; background:transparent; border:none; cursor:pointer; outline:none; }
-.g-btn-inner { position:relative; width:100%; height:100%; display:flex; align-items:center; justify-content:center; border-radius:2px; background:rgba(4,14,38,.6); transition:background .25s; }
-.g-btn-inner::before { content:''; position:absolute; inset:0; border-radius:2px; padding:1px; background:linear-gradient(135deg,rgba(106,176,255,.42),rgba(42,92,255,.18),rgba(200,216,240,.38)); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; }
-.g-btn span { font-family:'Tenor Sans',sans-serif; font-size:10.5px; letter-spacing:.32em; text-transform:uppercase; color:rgba(200,216,240,.45); position:relative; z-index:1; transition:color .25s; }
-.g-btn:hover .g-btn-inner { background:rgba(26,58,255,.13); }
-.g-btn:hover span { color:var(--silver-l); }
-.g-btn.sel .g-btn-inner { background:rgba(26,58,255,.17); box-shadow:0 0 16px rgba(42,92,255,.16), inset 0 0 14px rgba(42,92,255,.04); }
-.g-btn.sel .g-btn-inner::before { background:linear-gradient(135deg,rgba(106,176,255,.82),rgba(200,216,240,.52),rgba(106,176,255,.82)); }
-.g-btn.sel span { color:var(--silver-l); }
-.g-btn.sel .g-btn-inner::after { content:''; position:absolute; bottom:5px; left:50%; transform:translateX(-50%); width:17px; height:1px; background:var(--ice); box-shadow:0 0 5px var(--glow); }
-
-.action-row { display:flex; flex-direction:column; align-items:center; gap:9px; margin-top:17px; width:100%; max-width:400px; padding:0 20px; }
-.shimmer-line { width:100%; height:1px; background:linear-gradient(90deg,transparent,var(--glow),transparent); background-size:200% 100%; animation:shimmer 2.2s infinite; opacity:0; transition:opacity .4s; }
-.shimmer-line.on { opacity:1; }
-@keyframes shimmer { 0%{background-position:-100% 0} 100%{background-position:200% 0} }
-
-.btn-cap { width:100%; height:50px; position:relative; background:transparent; border:none; cursor:pointer; outline:none; overflow:hidden; border-radius:2px; }
-.bc-bg { position:absolute; inset:0; border-radius:2px; background:linear-gradient(135deg,#0a1a6c 0%,#1a3aff 50%,#0a1a6c 100%); background-size:200%; animation:btnSh 3s infinite; }
-@keyframes btnSh { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
-.bc-bd { position:absolute; inset:0; border-radius:2px; padding:1px; background:linear-gradient(135deg,rgba(106,176,255,.68),rgba(42,92,255,.32),rgba(200,216,240,.52)); -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite:xor; mask-composite:exclude; }
-.bc-lbl { position:relative; z-index:1; font-family:'Tenor Sans',sans-serif; font-size:10.5px; letter-spacing:.42em; text-transform:uppercase; color:var(--silver-l); }
-.btn-cap:disabled { opacity:.26; cursor:not-allowed; }
-.btn-cap:disabled .bc-bg { animation:none; }
-
-.btn-ret { background:transparent; border:none; cursor:pointer; font-family:'DM Mono',monospace; font-size:7.5px; letter-spacing:.28em; text-transform:uppercase; color:rgba(106,176,255,.28); padding:7px 16px; border-bottom:1px solid rgba(106,176,255,.1); transition:all .25s; }
-.btn-ret:hover:not(:disabled) { color:var(--ice); border-bottom-color:rgba(106,176,255,.4); }
-.btn-ret:disabled { opacity:.16; cursor:not-allowed; }
-
-/* ══════════════════════════════════════
-   SCENE 2 — PROCESSING
-══════════════════════════════════════ */
-#scene-processing { justify-content:center; align-items:center; }
-
-.proc-wrap {
-  display:flex; flex-direction:column; align-items:center;
-  text-align:center; padding:40px 32px;
-  max-width:380px; width:100%;
-}
-
-/* Rings */
-.proc-rings { position:relative; width:188px; height:188px; flex-shrink:0; }
-.p-ring { position:absolute; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); border:1px solid transparent; }
-.p-ring-1 { width:188px; height:188px; border-color:rgba(42,92,255,.18); animation:rPulse 3s ease-in-out infinite; }
-.p-ring-2 { width:144px; height:144px; border-color:rgba(106,176,255,.28); animation:rPulse 3s .5s ease-in-out infinite; }
-.p-ring-3 { width:100px; height:100px; border-color:rgba(200,216,240,.22); animation:rPulse 3s 1s ease-in-out infinite; }
-.p-spin   { position:absolute; width:188px; height:188px; border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); border:1.5px solid transparent; border-top-color:var(--ice); border-right-color:rgba(106,176,255,.25); animation:pSpin 2.2s linear infinite; box-shadow:0 0 10px rgba(106,176,255,.12); }
-@keyframes rPulse { 0%,100%{opacity:.35;transform:translate(-50%,-50%) scale(1)} 50%{opacity:.85;transform:translate(-50%,-50%) scale(1.05)} }
-@keyframes pSpin  { to{transform:translate(-50%,-50%) rotate(360deg)} }
-
-/* Snapshot thumbnail */
-.p-thumb { position:absolute; width:74px; height:74px; top:50%; left:50%; transform:translate(-50%,-50%); border-radius:50%; overflow:hidden; border:1.5px solid rgba(106,176,255,.28); box-shadow:0 0 22px rgba(42,92,255,.22); }
-.p-thumb img { width:100%; height:100%; object-fit:cover; }
-
-/* Corner brackets around the rings area */
-.p-brk { position:absolute; width:13px; height:13px; }
-.p-brk::before,.p-brk::after { content:''; position:absolute; background:rgba(106,176,255,.45); }
-.p-brk::before{width:100%;height:1px;top:0;left:0} .p-brk::after{width:1px;height:100%;top:0;left:0}
-.p-brk.tl{top:0;left:0} .p-brk.tr{top:0;right:0;transform:scaleX(-1)}
-.p-brk.bl{bottom:0;left:0;transform:scaleY(-1)} .p-brk.br{bottom:0;right:0;transform:scale(-1)}
-
-.p-title {
-  font-family:'Playfair Display',serif; font-style:italic; font-weight:700;
-  font-size:clamp(20px,5.5vw,30px); letter-spacing:-.01em; margin-top:28px;
-  background:linear-gradient(135deg,var(--silver-d),var(--silver-l),var(--ice));
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-}
-.p-sub    { font-family:'DM Mono',monospace; font-size:7.5px; letter-spacing:.4em; text-transform:uppercase; color:rgba(106,176,255,.4); margin-top:8px; }
-.p-status { font-family:'Tenor Sans',sans-serif; font-size:13px; color:rgba(200,216,240,.55); margin-top:16px; min-height:20px; transition:opacity .5s; }
-.p-dots   { display:flex; gap:8px; margin-top:18px; }
-.p-dot    { width:5px; height:5px; border-radius:50%; background:var(--glow); animation:dotPulse 1.4s infinite; }
-.p-dot:nth-child(2){animation-delay:.25s} .p-dot:nth-child(3){animation-delay:.5s}
-@keyframes dotPulse { 0%,80%,100%{opacity:.14;transform:scale(.6)} 40%{opacity:1;transform:scale(1.4)} }
-.p-scan   { width:200px; height:1px; margin-top:26px; position:relative; overflow:hidden; background:rgba(42,92,255,.1); }
-.p-scan-b { position:absolute; top:0; left:-60%; width:60%; height:100%; background:linear-gradient(90deg,transparent,var(--ice),transparent); animation:scanMove 2s ease-in-out infinite; }
-@keyframes scanMove { 0%{left:-60%} 100%{left:160%} }
-
-.p-error { display:none; margin-top:18px; padding:12px 16px; background:rgba(255,60,60,.07); border:1px solid rgba(255,60,60,.2); border-radius:3px; font-family:'DM Mono',monospace; font-size:8.5px; color:#f87171; letter-spacing:.03em; line-height:1.7; max-width:320px; text-align:left; }
-.btn-p-retry { display:none; margin-top:13px; background:transparent; border:1px solid rgba(106,176,255,.22); border-radius:2px; padding:10px 22px; cursor:pointer; font-family:'DM Mono',monospace; font-size:8px; letter-spacing:.25em; text-transform:uppercase; color:rgba(106,176,255,.55); transition:all .25s; }
-.btn-p-retry:hover { border-color:rgba(106,176,255,.55); color:var(--ice); }
-
-/* ══════════════════════════════════════
-   SCENE 3 — RESULT
-══════════════════════════════════════ */
-#scene-result { justify-content:center; align-items:center; }
-
-.res-wrap {
-  display:flex; flex-direction:column; align-items:center;
-  width:100%; max-width:520px; padding:28px 20px 48px;
-}
-.res-eye {
-  font-family:'DM Mono',monospace; font-size:7.5px; letter-spacing:.45em; text-transform:uppercase;
-  color:rgba(106,176,255,.38); margin-bottom:9px; text-align:center;
-}
-.res-ttl {
-  font-family:'Playfair Display',serif; font-style:italic; font-weight:900;
-  font-size:clamp(26px,7.5vw,48px); letter-spacing:-.01em; text-align:center;
-  background:linear-gradient(135deg,var(--silver-d),var(--silver-l),var(--ice));
-  -webkit-background-clip:text; background-clip:text; color:transparent;
-  filter:drop-shadow(0 2px 22px rgba(42,92,255,.18)); margin-bottom:18px;
-}
-.res-vid-wrap {
-  position:relative; width:100%; border-radius:3px; overflow:hidden;
-  border:1px solid rgba(106,176,255,.22);
-  box-shadow:0 0 55px rgba(26,58,255,.14), 0 22px 55px rgba(0,0,0,.7);
-}
-.res-topbar {
-  position:absolute; top:0; left:0; right:0; z-index:5;
-  display:flex; align-items:center; justify-content:space-between;
-  padding:9px 13px;
-  background:linear-gradient(180deg,rgba(1,7,20,.82) 0%,transparent 100%);
-  pointer-events:none;
-}
-.res-bar-lbl { font-family:'DM Mono',monospace; font-size:7px; letter-spacing:.2em; text-transform:uppercase; color:rgba(200,216,240,.5); }
-.res-ready   { display:flex; align-items:center; gap:5px; font-family:'DM Mono',monospace; font-size:7px; letter-spacing:.15em; text-transform:uppercase; color:#4ade80; }
-.r-dot       { width:4px; height:4px; border-radius:50%; background:#4ade80; animation:dotPulse 1.6s infinite; }
-#result-video { width:100%; display:block; background:#000; }
-
-.res-actions { display:flex; gap:10px; margin-top:14px; width:100%; }
-.btn-save {
-  flex:1; height:48px; border-radius:2px; border:1px solid rgba(106,176,255,.28);
-  background:linear-gradient(135deg,#0a1a6c,#1a3aff,#0a1a6c); background-size:200%;
-  animation:btnSh 4s infinite;
-  color:var(--silver-l); font-family:'Tenor Sans',sans-serif; font-size:10px; letter-spacing:.32em; text-transform:uppercase;
-  display:flex; align-items:center; justify-content:center; gap:8px;
-  text-decoration:none; cursor:pointer; transition:all .25s;
-  box-shadow:0 4px 22px rgba(26,58,255,.22);
-}
-.btn-save:hover { box-shadow:0 6px 34px rgba(26,58,255,.42); transform:translateY(-1px); }
-.btn-again {
-  height:48px; padding:0 16px; border-radius:2px;
-  border:1px solid rgba(106,176,255,.16); background:transparent;
-  color:rgba(200,216,240,.38); font-family:'DM Mono',monospace; font-size:7.5px; letter-spacing:.2em; text-transform:uppercase;
-  cursor:pointer; white-space:nowrap; transition:all .25s;
-}
-.btn-again:hover { border-color:rgba(106,176,255,.48); color:var(--silver-l); }
-.res-hint { margin-top:18px; text-align:center; font-family:'DM Mono',monospace; font-size:7.5px; letter-spacing:.2em; text-transform:uppercase; color:rgba(106,176,255,.22); }
-
-#steps,#step1,#step2,#step3{display:none}
-</style>
-</head>
-<body>
-
-<div class="scene-bg"></div>
-<div class="carpet-runner"></div>
-<div class="vign-l"></div>
-<div class="vign-r"></div>
-<div class="grain"></div>
-<div class="sparks" id="sparks"></div>
-<div class="live-badge"><span class="live-dot"></span>AI Experience</div>
-
-<!-- ═══ SCENE 0 — CURTAIN ═══ -->
-<div class="scene active" id="scene-curtain">
-  <div class="curtain-wrap">
-    <div class="curtain-panel left" id="c-left">
-      <div class="curtain-fabric"></div>
-      <div class="c-braid"></div>
-    </div>
-    <div class="curtain-panel right" id="c-right">
-      <div class="curtain-fabric"></div>
-      <div class="c-braid"></div>
-    </div>
-  </div>
-  <div class="curtain-stage">
-    <div class="c-title">Blue<br>Carpet</div>
-    <div class="c-sub">AI Video Experience</div>
-    <div class="c-cta" onclick="openCurtain()">Tap to Enter</div>
-  </div>
-</div>
-
-<!-- ═══ SCENE 1 — MAIN ═══ -->
-<div class="scene" id="scene-main">
-  <div id="steps" style="display:none"><div id="step1"></div><div id="step2"></div><div id="step3"></div></div>
-
-  <div class="masthead">
-    <span class="mast-eye">iS Clinical &nbsp;·&nbsp; Future of Aesthetics 2026</span>
-    <span class="mast-ttl">Blue<br>Carpet</span>
-    <span class="mast-tag">Your cinematic moment awaits</span>
-    <div class="t-rule"><div class="trl a"></div><div class="trd"></div><div class="trl b"></div></div>
-  </div>
-
-  <div class="frame-stage">
-    <div class="f-border">
-      <div class="fcm fcm-tl"></div><div class="fcm fcm-tr"></div>
-      <div class="fcm fcm-bl"></div><div class="fcm fcm-br"></div>
-      <div class="f-inner">
-        <div id="fguide"><div class="bshape"></div><span class="fhint t">Step back — full body in frame</span><span class="fhint b">Remove headphones · face forward</span></div>
-        <div class="cam-ph off" id="cam-ph" onclick="initCamera()">
-          <div class="cam-ret">
-            <div class="cam-ret-ring"></div>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-          </div>
-          <p id="ph-text">Select your look first</p>
-          <p class="cam-hint">Tap to activate camera</p>
-        </div>
-        <video id="video-el" autoplay playsinline muted></video>
-        <img id="photo-preview" alt="">
-        <div id="cdown"><span class="cnum" id="cnum">3</span></div>
-        <div id="flash-overlay"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="sec-lbl">Select Your Look</div>
-  <div class="gender-row">
-    <button class="g-btn" id="btn-male"   onclick="selectGender('male')"><div class="g-btn-inner"><span>Male</span></div></button>
-    <button class="g-btn" id="btn-female" onclick="selectGender('female')"><div class="g-btn-inner"><span>Female</span></div></button>
-  </div>
-
-  <div class="action-row">
-    <div class="shimmer-line" id="shimmer"></div>
-    <button class="btn-cap" id="cap-btn" onclick="startCountdown()" disabled>
-      <div class="bc-bg"></div><div class="bc-bd"></div>
-      <span class="bc-lbl" id="cap-label">Step onto the Carpet</span>
-    </button>
-    <button class="btn-ret" id="ret-btn" onclick="retake()" disabled>Retake Photo</button>
-  </div>
-</div>
-
-<!-- ═══ SCENE 2 — PROCESSING ═══ -->
-<div class="scene" id="scene-processing">
-  <div class="proc-wrap">
-    <div class="proc-rings">
-      <div class="p-brk tl"></div><div class="p-brk tr"></div>
-      <div class="p-brk bl"></div><div class="p-brk br"></div>
-      <div class="p-ring p-ring-1"></div>
-      <div class="p-ring p-ring-2"></div>
-      <div class="p-ring p-ring-3"></div>
-      <div class="p-spin"></div>
-      <div class="p-thumb"><img id="proc-snap" src="" alt=""></div>
-    </div>
-    <div class="p-title">Creating Your Moment</div>
-    <div class="p-sub">iS Clinical AI &nbsp;·&nbsp; Blue Carpet</div>
-    <div class="p-status" id="p-status">Preparing your blue carpet moment…</div>
-    <div class="p-dots"><div class="p-dot"></div><div class="p-dot"></div><div class="p-dot"></div></div>
-    <div class="p-scan"><div class="p-scan-b"></div></div>
-    <div class="p-error" id="p-error"></div>
-    <button class="btn-p-retry" id="btn-retry" onclick="retake()">Start Again</button>
-  </div>
-</div>
-
-<!-- ═══ SCENE 3 — RESULT ═══ -->
-<div class="scene" id="scene-result">
-  <div class="res-wrap">
-    <div class="res-eye">iS Clinical &nbsp;·&nbsp; Future of Aesthetics 2026</div>
-    <div class="res-ttl">Your Blue<br>Carpet Moment</div>
-    <div class="res-vid-wrap">
-      <div class="res-topbar">
-        <span class="res-bar-lbl">Blue Carpet Experience</span>
-        <span class="res-ready"><span class="r-dot"></span>Ready</span>
-      </div>
-      <video id="result-video" controls loop autoplay playsinline></video>
-    </div>
-    <div class="res-actions">
-      <a class="btn-save" id="dl-link" href="#" download="blue-carpet-moment.mp4">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Save Your Moment
-      </a>
-      <button class="btn-again" onclick="resetToMain()">Go Again</button>
-    </div>
-    <div class="res-hint">Share your blue carpet moment</div>
-  </div>
-</div>
-
-<script>
-// Sparks
-(function(){
-  var c=document.getElementById('sparks');
-  for(var i=0;i<28;i++){
-    var s=document.createElement('div'); s.className='spark';
-    var sz=Math.random()*2.5+1;
-    s.style.cssText='width:'+sz+'px;height:'+sz+'px;left:'+(Math.random()*100)+'%;animation-duration:'+(Math.random()*11+6)+'s;animation-delay:'+(Math.random()*9)+'s';
-    c.appendChild(s);
+  // Only accept POST
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' });
   }
-})();
 
-function showScene(id){
-  document.querySelectorAll('.scene').forEach(function(s){ s.classList.remove('active'); });
-  document.getElementById(id).classList.add('active');
-}
+  const { email, videoUrl } = req.body || {};
 
-// ── CURTAIN ──
-var curtainDone=false;
-function openCurtain(){
-  if(curtainDone) return; curtainDone=true;
-  document.getElementById('c-left').classList.add('open');
-  document.getElementById('c-right').classList.add('open');
-  setTimeout(function(){ showScene('scene-main'); },1750);
-}
+  // ── 1. Validate inputs ────────────────────────────────────────────────────
+  if (!email || !email.includes('@')) {
+    return res.status(400).json({ error: 'Valid email address required.' });
+  }
+  if (!videoUrl || !videoUrl.startsWith('http')) {
+    return res.status(400).json({ error: 'Valid video URL required.' });
+  }
+  if (!SERVER_TOKEN) {
+    console.error('[send-email] POSTMARK_SERVER_TOKEN env var is not set.');
+    return res.status(500).json({ error: 'Email service not configured.' });
+  }
 
-// ── STATE ──
-var gender=null, stream=null, b64=null, countTimer=null;
-function el(id){ return document.getElementById(id); }
-function setStep(n){ for(var i=1;i<=3;i++){ var s=el('step'+i); if(!s)continue; s.classList.remove('active','done'); if(i<n)s.classList.add('done'); else if(i===n)s.classList.add('active'); } }
+  // ── 2. Fetch the video ────────────────────────────────────────────────────
+  let videoBuffer;
+  try {
+    const videoRes = await fetch(videoUrl, { method: 'GET' });
+    if (!videoRes.ok) throw new Error(`Video fetch failed: ${videoRes.status}`);
+    const arrayBuf = await videoRes.arrayBuffer();
+    videoBuffer = Buffer.from(arrayBuf);
+  } catch (err) {
+    console.error('[send-email] Could not fetch video:', err.message);
+    return res.status(502).json({ error: 'Could not retrieve video file. Please try again.' });
+  }
 
-function selectGender(g){
-  gender=g;
-  el('btn-male').classList.toggle('sel', g==='male');
-  el('btn-female').classList.toggle('sel', g==='female');
-  el('cam-ph').classList.remove('off');
-  el('ph-text').textContent='Tap to activate camera';
-  setStep(2);
-  if(stream) el('cap-btn').disabled=false;
-}
+  // ── 3. Build the Postmark payload ─────────────────────────────────────────
+  const isAttachable = videoBuffer.byteLength <= MAX_ATTACH_BYTES;
+  const videoBase64  = isAttachable ? videoBuffer.toString('base64') : null;
 
-function initCamera(){
-  if(!gender) return;
-  el('cam-ph').style.pointerEvents='none';
-  navigator.mediaDevices.getUserMedia({video:{facingMode:'user',width:{ideal:1080},height:{ideal:1920}},audio:false})
-    .then(function(s){
-      stream=s;
-      el('video-el').srcObject=s;
-      el('video-el').style.display='block';
-      el('cam-ph').style.display='none';
-      el('fguide').classList.add('on');
-      el('cap-btn').disabled=false;
-    })
-    .catch(function(){
-      el('cam-ph').innerHTML='<p style="color:#f87171;font-size:9px;padding:24px;text-align:center;line-height:2;font-family:\'DM Mono\',monospace">Camera access denied.<br>Please refresh and allow access.</p>';
+  const htmlBody = buildHtmlEmail(email, videoUrl, isAttachable);
+  const textBody = buildTextEmail(email, videoUrl, isAttachable);
+
+  const payload = {
+    From:          FROM_ADDRESS,
+    To:            email,
+    Subject:       'Your Blue Carpet Moment — iS Clinical Future of Aesthetics 2026',
+    HtmlBody:      htmlBody,
+    TextBody:      textBody,
+    MessageStream: 'outbound',
+    Tag:           'blue-carpet-video',
+    TrackOpens:    true,
+  };
+
+  // Attach video if small enough, otherwise the email body has the download link
+  if (isAttachable && videoBase64) {
+    payload.Attachments = [
+      {
+        Name:        'blue-carpet-moment.mp4',
+        Content:     videoBase64,
+        ContentType: 'video/mp4',
+      },
+    ];
+  }
+
+  // ── 4. POST to Postmark ───────────────────────────────────────────────────
+  let pmRes;
+  try {
+    pmRes = await fetch(POSTMARK_API, {
+      method:  'POST',
+      headers: {
+        'Accept':                  'application/json',
+        'Content-Type':            'application/json',
+        'X-Postmark-Server-Token': SERVER_TOKEN,
+      },
+      body: JSON.stringify(payload),
     });
-}
+  } catch (err) {
+    console.error('[send-email] Postmark request failed:', err.message);
+    return res.status(502).json({ error: 'Failed to reach email service. Please try again.' });
+  }
 
-function startCountdown(){
-  if(el('cap-btn').disabled||!gender) return;
-  el('cap-btn').disabled=true; el('ret-btn').disabled=true;
-  var n=3; showCD(n);
-  countTimer=setInterval(function(){
-    n--; if(n<=0){ clearInterval(countTimer); el('cdown').classList.remove('on'); snap(); } else showCD(n);
-  },1000);
-}
-function showCD(n){
-  el('cnum').textContent=n; el('cdown').classList.add('on');
-  var c=el('cnum'); c.style.animation='none'; c.offsetHeight; c.style.animation='cPulse 1s ease-in-out';
-}
+  const pmData = await pmRes.json();
 
-function snap(){
-  var f=el('flash-overlay'); f.classList.remove('on'); f.offsetHeight; f.classList.add('on');
-  el('fguide').classList.remove('on');
-  var v=el('video-el');
+  // Postmark returns ErrorCode 0 for success
+  if (!pmRes.ok || pmData.ErrorCode !== 0) {
+    console.error('[send-email] Postmark error:', pmData);
+    return res.status(502).json({
+      error: pmData.Message || 'Email delivery failed. Please try again.',
+    });
+  }
 
-  // Composite onto a neutral dark background — removes bedroom/room context
-  // so Hailuo doesn't anchor the first frame to the source environment
-  var cv=document.createElement('canvas');
-  cv.width=768; cv.height=1024;
-  var ctx=cv.getContext('2d');
-
-  // Dark neutral background
-  ctx.fillStyle='#111118';
-  ctx.fillRect(0,0,cv.width,cv.height);
-
-  // Crop-to-fill: scale so the video fills the entire canvas, centred
-  // This keeps the face large rather than letterboxing it into a small box
-  var vw=v.videoWidth||1080, vh=v.videoHeight||1920;
-  var scale=Math.max(cv.width/vw, cv.height/vh);
-  var dw=vw*scale, dh=vh*scale;
-  var dx=(cv.width-dw)/2, dy=(cv.height-dh)/2;
-  ctx.drawImage(v, dx, dy, dw, dh);
-
-  var url=cv.toDataURL('image/jpeg',0.92);
-  b64=url.split(',')[1];
-  el('proc-snap').src=url;
-  el('photo-preview').src=url; el('photo-preview').style.display='block';
-  el('video-el').style.display='none';
-  el('ret-btn').disabled=false;
-  setStep(3);
-  setTimeout(function(){ showScene('scene-processing'); generate(); },350);
-}
-
-function retake(){
-  b64=null;
-  el('photo-preview').src=''; el('photo-preview').style.display='none';
-  el('video-el').style.display='block'; el('fguide').classList.add('on');
-  el('shimmer').classList.remove('on');
-  el('cap-btn').disabled=false; el('cap-label').textContent='Step onto the Carpet';
-  el('ret-btn').disabled=true;
-  el('p-error').style.display='none'; el('btn-retry').style.display='none';
-  setStep(2); showScene('scene-main');
-}
-
-function resetToMain(){
-  b64=null; gender=null;
-  el('btn-male').classList.remove('sel'); el('btn-female').classList.remove('sel');
-  el('photo-preview').src=''; el('photo-preview').style.display='none';
-  el('cam-ph').classList.add('off'); el('cam-ph').style.display='';
-  el('cam-ph').style.pointerEvents=''; el('ph-text').textContent='Select your look first';
-  el('video-el').style.display='none';
-  if(stream){ stream.getTracks().forEach(function(t){t.stop();}); stream=null; }
-  el('fguide').classList.remove('on');
-  el('cap-btn').disabled=true; el('ret-btn').disabled=true;
-  el('result-video').src=''; el('shimmer').classList.remove('on');
-  el('cap-label').textContent='Step onto the Carpet';
-  el('p-error').style.display='none'; el('btn-retry').style.display='none';
-  setStep(1); showScene('scene-main');
-}
-
-// ── GENERATION ──
-var msgs=[
-  'Rolling out the blue carpet…',
-  'Paparazzi taking position…',
-  'Lights, camera, action…',
-  'Almost ready for your close-up…',
-  'Still generating… this takes up to 2 minutes'
-];
-var mIdx=0;
-function setStatus(t){ el('p-status').textContent=t; }
-
-function generate(){
-  el('p-error').style.display='none'; el('btn-retry').style.display='none';
-  mIdx=0; setStatus(msgs[0]);
-  fetch('/api/predict',{
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({imageBase64:b64,gender:gender})
-  })
-  .then(function(r){ return r.json().then(function(d){ return {ok:r.ok,data:d}; }); })
-  .then(function(res){
-    if(!res.ok||res.data.error) throw new Error(res.data.error||res.data.detail||'Failed to start');
-    if(!res.data.id) throw new Error('No prediction ID');
-    return poll(res.data);
-  })
-  .then(function(result){
-    if(result.status==='succeeded'){
-      var url=Array.isArray(result.output)?result.output[0]:result.output;
-      if(!url) throw new Error('No video URL');
-      el('result-video').src=url; el('dl-link').href=url;
-      showScene('scene-result');
-    } else { throw new Error(result.error||'Generation failed'); }
-  })
-  .catch(function(e){
-    el('p-error').textContent='Something went wrong: '+e.message;
-    el('p-error').style.display='block'; el('btn-retry').style.display='block';
+  console.log(`[send-email] Sent to ${email} — MessageID: ${pmData.MessageID} — attached: ${isAttachable}`);
+  return res.status(200).json({
+    success:    true,
+    messageId:  pmData.MessageID,
+    attached:   isAttachable,
   });
-}
+};
 
-function poll(pred){
-  if(pred.status==='succeeded'||pred.status==='failed'||pred.status==='canceled') return Promise.resolve(pred);
-  setStatus(msgs[Math.min(mIdx++, msgs.length-1)]);
-  return sleep(5000).then(function(){
-    return fetch('/api/predict?id='+pred.id).then(function(r){return r.json();}).then(function(d){return poll(d);});
-  });
-}
+// ── EMAIL TEMPLATES ──────────────────────────────────────────────────────────
 
-function sleep(ms){ return new Promise(function(r){ setTimeout(r,ms); }); }
-</script>
+function buildHtmlEmail(email, videoUrl, attached) {
+  const videoBlock = attached
+    ? `<p style="font-size:15px;color:#9db8e8;font-style:italic;margin:0 0 28px">
+        Your video is attached to this email as <strong style="color:#dfe7f5">blue-carpet-moment.mp4</strong>.
+       </p>`
+    : `<p style="font-size:15px;color:#9db8e8;font-style:italic;margin:0 0 20px">
+        Your video is ready to download — tap the button below.
+       </p>
+       <a href="${videoUrl}" download="blue-carpet-moment.mp4"
+         style="display:inline-block;padding:14px 36px;background:linear-gradient(135deg,#0b1440,#2440b8);
+                color:#dfe7f5;font-size:13px;letter-spacing:0.3em;text-transform:uppercase;
+                text-decoration:none;border-radius:2px;border:1px solid rgba(201,169,106,0.5);
+                margin-bottom:28px">
+         Download Your Moment
+       </a>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Your Blue Carpet Moment</title></head>
+<body style="margin:0;padding:0;background:#02040c;font-family:Georgia,serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#02040c;padding:40px 20px;">
+    <tr><td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;">
+
+        <!-- Header -->
+        <tr><td align="center" style="padding-bottom:8px;">
+          <p style="margin:0;font-size:10px;letter-spacing:0.45em;text-transform:uppercase;color:rgba(230,207,156,0.6);">
+            iS Clinical · Future of Aesthetics 2026
+          </p>
+        </td></tr>
+        <tr><td align="center" style="padding-bottom:6px;">
+          <h1 style="margin:0;font-size:42px;font-style:italic;font-weight:900;letter-spacing:-0.02em;line-height:1;
+                     background:linear-gradient(150deg,#7e93bf,#dfe7f5,#9db8e8);
+                     -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+                     color:#dfe7f5;">
+            Blue Carpet
+          </h1>
+        </td></tr>
+
+        <!-- Gold rule -->
+        <tr><td align="center" style="padding:12px 0 24px;">
+          <table cellpadding="0" cellspacing="0"><tr>
+            <td width="54" height="1" style="background:linear-gradient(90deg,transparent,rgba(201,169,106,0.5));"></td>
+            <td width="8" height="8" style="background:#e6cf9c;transform:rotate(45deg);margin:0 8px;display:block;"></td>
+            <td width="54" height="1" style="background:linear-gradient(-90deg,transparent,rgba(201,169,106,0.5));"></td>
+          </tr></table>
+        </td></tr>
+
+        <!-- Body -->
+        <tr><td align="center"
+          style="background:rgba(11,20,58,0.4);border:1px solid rgba(201,169,106,0.18);
+                 border-radius:3px;padding:36px 32px;">
+          <p style="margin:0 0 10px;font-size:10px;letter-spacing:0.38em;text-transform:uppercase;color:rgba(157,184,232,0.5);">
+            Your moment is ready
+          </p>
+          <p style="margin:0 0 22px;font-size:20px;font-style:italic;color:#dfe7f5;line-height:1.4;">
+            You stepped onto the blue carpet.<br>Here's the cinematic result.
+          </p>
+          ${videoBlock}
+          <p style="margin:28px 0 0;font-size:12px;color:rgba(157,184,232,0.4);font-style:italic;line-height:1.7;">
+            Generated exclusively at the iS Clinical Future of Aesthetics 2026 event.<br>
+            Share your moment and tag us.
+          </p>
+        </td></tr>
+
+        <!-- Footer -->
+        <tr><td align="center" style="padding-top:28px;">
+          <p style="margin:0;font-size:10px;letter-spacing:0.3em;text-transform:uppercase;color:rgba(157,184,232,0.25);">
+            iS Clinical Skincare South Africa · sternlaser.co.za
+          </p>
+        </td></tr>
+
+      </table>
+    </td></tr>
+  </table>
 </body>
-</html>
+</html>`;
+}
+
+function buildTextEmail(email, videoUrl, attached) {
+  const videoLine = attached
+    ? 'Your blue carpet video is attached to this email as blue-carpet-moment.mp4.'
+    : `Your blue carpet video is ready to download:\n${videoUrl}`;
+
+  return `YOUR BLUE CARPET MOMENT
+iS Clinical · Future of Aesthetics 2026
+
+You stepped onto the blue carpet. Here's your cinematic moment.
+
+${videoLine}
+
+Generated exclusively at the iS Clinical Future of Aesthetics 2026 event.
+
+iS Clinical Skincare South Africa · sternlaser.co.za`;
+}
