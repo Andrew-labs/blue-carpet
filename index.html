@@ -660,20 +660,20 @@ html, body {
   position: fixed;
   left: 50%;
   right: auto;
-  bottom: 116px;
+  bottom: 150px;
   z-index: 42;
-  width: min(88vw, 520px);
+  width: min(78vw, 460px);
   transform: translateX(-50%);
-  padding: 14px 18px 12px;
+  padding: 10px 16px 9px;
   opacity: 1;
-  background: linear-gradient(180deg, rgba(4, 10, 36, .1), rgba(9, 24, 90, .72));
-  border-top: 1px solid rgba(255, 241, 184, .56);
-  border-bottom: 1px solid rgba(255, 211, 106, .4);
-  box-shadow: 0 0 28px rgba(36, 64, 184, .38), inset 0 0 28px rgba(36, 64, 184, .24);
+  background: linear-gradient(180deg, rgba(4, 10, 36, .02), rgba(9, 24, 90, .48));
+  border-top: 1px solid rgba(255, 241, 184, .36);
+  border-bottom: 1px solid rgba(255, 211, 106, .2);
+  box-shadow: 0 0 22px rgba(36, 64, 184, .28), inset 0 0 18px rgba(36, 64, 184, .16);
 }
 
 .carpet-text-main {
-  font-size: clamp(22px, 5.2vw, 36px);
+  font-size: clamp(20px, 4.6vw, 32px);
   line-height: .98;
 }
 
@@ -683,11 +683,24 @@ html, body {
 }
 
 .look-row {
-  margin-top: 10px;
+  position: fixed;
+  left: 50%;
+  bottom: 76px;
+  z-index: 43;
+  transform: translateX(-50%);
+  margin: 0;
+  background: rgba(5, 10, 28, .78);
 }
 
 .action-row {
-  margin-top: 10px;
+  position: fixed;
+  left: 50%;
+  bottom: 18px;
+  z-index: 43;
+  transform: translateX(-50%);
+  margin: 0;
+  max-width: min(82vw, 360px);
+  padding: 0;
 }
 
 @media (max-height: 760px) {
@@ -698,8 +711,8 @@ html, body {
 
   .carpet-text,
   .carpet-text.on {
-    bottom: 100px;
-    padding: 10px 14px 9px;
+    bottom: 132px;
+    padding: 8px 12px 7px;
   }
 
   .carpet-text-main {
@@ -707,11 +720,11 @@ html, body {
   }
 
   .look-row {
-    margin-top: 7px;
+    bottom: 68px;
   }
 
   .action-row {
-    margin-top: 7px;
+    bottom: 14px;
   }
 }
 </style>
