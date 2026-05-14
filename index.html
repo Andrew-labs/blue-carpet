@@ -727,6 +727,127 @@ html, body {
     bottom: 14px;
   }
 }
+
+/* === BOTTOM SPACE + FIRST LOGO UPDATE ===
+   Keep the camera out of the footer and move the curtain logo higher. */
+.logo-half {
+  top: 22%;
+  width: clamp(150px, 20vw, 220px);
+  height: clamp(150px, 20vw, 220px);
+}
+
+.logo-half.left.open {
+  transform: translateY(-50%) translateX(-100vw);
+}
+
+.logo-half.right.open {
+  transform: translateY(-50%) translateX(100vw);
+}
+
+.curtain-stage {
+  justify-content: flex-start;
+  padding-top: 36vh;
+}
+
+#scene-main {
+  padding-bottom: 178px;
+}
+
+.frame-stage {
+  height: calc(100vh - 330px);
+  min-height: 360px;
+  max-height: 760px;
+}
+
+.carpet-text,
+.carpet-text.on {
+  bottom: 126px;
+  width: min(76vw, 440px);
+  padding: 8px 14px 7px;
+}
+
+.carpet-text-main {
+  font-size: clamp(18px, 4vw, 29px);
+}
+
+.carpet-text-sub {
+  margin-top: 4px;
+  font-size: clamp(7px, 1.55vw, 10px);
+}
+
+.look-row {
+  bottom: 72px;
+  height: 34px;
+}
+
+.look-lbl {
+  padding: 0 12px;
+}
+
+.g-btn {
+  height: 34px;
+  padding: 0 14px;
+}
+
+.action-row {
+  bottom: 14px;
+  gap: 0;
+  max-width: min(76vw, 340px);
+}
+
+.shimmer-line {
+  display: none;
+}
+
+.btn-cap {
+  height: 46px;
+}
+
+.bc-lbl {
+  font-size: 12px;
+  letter-spacing: .3em;
+}
+
+@media (max-height: 760px) {
+  .logo-half {
+    top: 20%;
+  }
+
+  .curtain-stage {
+    padding-top: 34vh;
+  }
+
+  #scene-main {
+    padding-bottom: 156px;
+  }
+
+  .frame-stage {
+    height: calc(100vh - 292px);
+    min-height: 300px;
+  }
+
+  .carpet-text,
+  .carpet-text.on {
+    bottom: 114px;
+    padding: 7px 12px 6px;
+  }
+
+  .carpet-text-main {
+    font-size: clamp(17px, 3.8vw, 26px);
+  }
+
+  .look-row {
+    bottom: 64px;
+  }
+
+  .action-row {
+    bottom: 10px;
+  }
+
+  .btn-cap {
+    height: 42px;
+  }
+}
 </style>
 </head>
 <body>
